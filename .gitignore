@@ -1,3 +1,11 @@
+.vscode/
+backup/
+dist/
+build/
+wip/
+*.bak
+pywho
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

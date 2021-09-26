@@ -10,7 +10,6 @@ main screen and user info:
 
 `2 <ENTER>`
 
-=======
 ![screenshot_4](pywho4.png)
 
 ## Normal mode

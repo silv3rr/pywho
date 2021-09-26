@@ -67,8 +67,8 @@ Now `git clone` this repo and run `./pywho.py`
 
 If you do not want to install python modules, there's also a single executable file available for download:
 
-- CentOS 7 [pywho-centos-python3-x86_x64.gz](bin/pywho-centos-python3-x86_x64.gz) ([shasum](bin/pywho-centos-python3-x86_x64.sha512sum))
-- Debian 10/11 [pywho-debian-python3-x86_x64.gz](bin/pywho-debian-python3-x86_x64.gz) ([shasum](bin/pywho-debian-python3-x86_x64.shasum))
+- CentOS 7 [pywho-centos-python3-x86_x64.gz](bin/pywho-centos-python3-x86_x64.tar.gz) ([shasum](bin/pywho-centos-python3-x86_x64.sha512sum))
+- Debian 10/11 [pywho-debian-python3-x86_x64.gz](bin/pywho-debian-python3-x86_x64.tar.gz) ([shasum](bin/pywho-debian-python3-x86_x64.shasum))
 
 ### glftpd
 

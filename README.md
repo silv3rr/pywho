@@ -12,7 +12,7 @@ See [Screenshots.md](docs/Screenshots.md) for more examples
 
 ## New features
 
-- fully themable output including ..colors! and.. emoji💾😆
+- fully themeable output including ..colors! and.. emoji💾😆
 - set maxusers=-1 to auto get value from glftpd.conf
 - adds same features as sitewho+2: userip/geoip fields
 - adds spy mode, like gl_spy (test)
@@ -92,7 +92,7 @@ _Note that ss5, geoip, spy and xxl mode are disabled by default. To enable, edit
 
 ### Glftpd
 
-Optionally add pywho as site_cmd in 'glftpd.conf' and/or replace binary(WHO) in 'ngBot.conf'. When running from glftpd, FLAGS is used to detect color(5) and seeallflags (same as pzs-ng sitewho)
+Optionally add pywho as site_cmd in 'glftpd.conf' and/or replace binary(WHO) in 'ngBot.conf'. When running from glftpd, FLAGS is used to detect color(5) and seeallflags (same as pzs-ng sitewho).
 
 ## Build
 

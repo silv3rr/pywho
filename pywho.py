@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 
-############################################################################
-# PY-WHO!? pzs-ng's sitewho ported to Python                               #
-##############################################################################
-# Uses SHM and glftpd's 'ONLINE' C struct, module sysv_ipc is required       #
-# See README and comments in pywho.conf for install and config instructions  #
 ################################################################################
-                                                               # v20210724 slv #
-                                                               #################
+# PY-WHO!? pzs-ng's sitewho ported to Python                                   #
+################################################################################
+# Uses SHM and glftpd's 'ONLINE' C struct, module sysv_ipc is required         #
+# See README and comments in pywho.conf for install and config instructions    #
+################################################################################
+VERSION = "211021"                                                       # slv #
+################################################################################
+
 import string
 import struct
 import re
@@ -24,13 +25,11 @@ import select
 import fcntl
 import sysv_ipc
 
-VERSION = "210926"
-
 # vars used like #ifdef's in orig sitewho.c
 _WITH_ALTWHO = True
 _WITH_SS5 = False
 _WITH_GEOIP = False
-_WITH_SPY =  False
+_WITH_SPY = False
 _WITH_XXL = False
 
 SCRIPT = os.path.basename(sys.argv[0])
@@ -98,13 +97,13 @@ else:
 CONFIGFILE = "{}/{}.conf".format(SCRIPTDIR, SCRIPTNAME)
 config = configparser.ConfigParser()
 err = []
-for cfg in CONFIGFILE, f'{SCRIPTDIR}/pywho.conf':
+for cfg in set([ CONFIGFILE, f'{SCRIPTDIR}/pywho.conf' ]):
   try:
     with open(cfg, 'r') as f:
       config.read_string("[DEFAULT]\n" + f.read())
   except Exception as e:
     err.append(e)
-if len(err) > 1:
+if len(err) > 0:
   for i in err:
     print(i)
   print('Error: opening config file')
@@ -344,8 +343,8 @@ def showusers(mode, ucomp, raw, repeat, user, x, chidden, geoip2_client, downloa
   #     b'STAT'
   #     b'PASV'
   #     b'Connecting...'
-  username = user[x].username.decode().rstrip(NULL_CHAR)
-  tagline = user[x].tagline.decode().rstrip(NULL_CHAR)
+  username = user[x].username.decode().split(NULL_CHAR, 1)[0]
+  tagline = user[x].tagline.decode().split(NULL_CHAR, 1)[0]
   currentdir = user[x].currentdir.decode().split(NULL_CHAR, 1)[0]
   u_status = user[x].status.decode().split(NULL_CHAR, 1)[0]
   tstop_tv_sec = calendar.timegm(time.gmtime())
@@ -358,7 +357,7 @@ def showusers(mode, ucomp, raw, repeat, user, x, chidden, geoip2_client, downloa
   iso_code = "xX"
 
   # skip if host is empty
-  if user[x].host is not b'':
+  if user[x].host != b'':
     host = user[x].host.decode().rstrip(NULL_CHAR)
     (_, addr) = host.split('@', 2)[0:2]
     # ipv4/6
@@ -595,7 +594,9 @@ def showusers(mode, ucomp, raw, repeat, user, x, chidden, geoip2_client, downloa
         username=username, g_name=g_name, tagline=tagline, status=status.replace('  ', ' ').upper(), pct=pct, bar=bar
       )
       print ("{message:<{col}.{col}}".format(col=columns, message=download))
-    info = string.Template(tmpl_str_xxl['info']).substitute(tmpl_sub).format(userip if userip != '0.0.0.0' else addr, online=online, filename=filename)
+    info = string.Template(tmpl_str_xxl['info']).substitute(tmpl_sub).format(
+      userip = userip if userip != '0.0.0.0' else addr, online=online, filename=filename
+    )
     print ("{message:<{col}.{col}}".format(col=columns, message=info))
     # separator:        print("{message:<{col}.{col}}".format(col=columns, message=layout['separator']))
     # sep w/ calc len:  msg_len = max(len(upload), len(download), len(info))
@@ -639,7 +640,7 @@ def showusers(mode, ucomp, raw, repeat, user, x, chidden, geoip2_client, downloa
     # left: rotate between ip or tagline on left
     if repeat % 8 in range(0, 5):
       print(string.Template(tmpl_str_spy['info']).substitute(tmpl_sub).format(info="{:8.8s} {:>18.18s}".format(
-        tagline, userip= userip if userip != '0.0.0.0' else addr), online=online, fn_spy=fn_spy)
+        tagline, userip if userip != '0.0.0.0' else addr), online=online, fn_spy=fn_spy)
       )
     else:
       print(string.Template(tmpl_str_spy['info']).substitute(tmpl_sub).format(info=tagline, online=online, fn_spy=fn_spy))
@@ -977,7 +978,7 @@ while (_WITH_SPY and spy_mode) or (not spy_mode and repeat < 1):
     [ user_action, screen_redraw ] = result
     if user_action == 0:
       time.sleep(1)
-    if _WITH_GEOIP and geoip2:
+    if _WITH_GEOIP and geoip2_enable:
       time.sleep(2)
 
   repeat += 1

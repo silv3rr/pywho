@@ -1,22 +1,23 @@
 # Screen caps
 
-## spy mode
+## Spy mode
 
-### main screen
+main screen and user info:
 
 `./pyshow --spy`
 
-![sreenshot_3](pywho3.png)
+![screenshot_3](pywho3.png)
 
-## user download
+`2 <ENTER>`
 
-![sreenshot_4](pywho4.png)
+=======
+![screenshot_4](pywho4.png)
 
-## normal mode
+## Normal mode
 
  user downloading:
 
-``` text
+``` python
 ./pywho.py
  .            .       .___.              _____
  | W H O_ I S |  .____|   |   __       ((    / ___    ________
@@ -36,10 +37,10 @@
 `------------------------------------------------------------[PY-WHO]---'
 ```
 
-## raw
+## Raw mode
 
-``` bash
- ./pywho.py --raw
+``` text
+./pywho.py --raw
 "USER" "silver" "siteops" ""ID" 36" "No Tagline Set" "08:39:52" "" "0" "/site/linux/debian-11.0.0-amd64-DVD-1.iso" "22729" "bar@foo.host.ru" "RU" "1.2.3.4"
 "USER" "silver" "siteops" ""ID" 25" "No Tagline Set" "02:06:46" "" "0" "/site" "28479" "foo.host.ru" "RU" "1.2.3.4"
 "USER" "test" "SomeGRP" ""ID" 18" "scene sux" "02:06:38" "" "0" "/site" "28487" "ident@192.168.0.10" "xX" "92.68.0.10"

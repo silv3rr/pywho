@@ -328,6 +328,7 @@ def filesize(filename):
       pass
   return 0
 
+
 def showusers(mode, ucomp, raw, repeat, user, x, chidden, geoip2_client, downloads, uploads,
              total_up_speed, total_dn_speed, browsers, idlers, onlineusers, geoip2_buf, geoip2_shown_ex):
   """
@@ -382,14 +383,13 @@ def showusers(mode, ucomp, raw, repeat, user, x, chidden, geoip2_client, downloa
     g_name = get_group(user[x].groupid)
 
   # check if user in hidden users/groups
-  if nocase:
-    if ((username.lower() in husers.lower()) or (g_name.lower() in hgroups.lower())) or \
-       ((username in husers) or (g_name in hgroups)):
-      if showall:
-        maskchar = '*'
-      else:
-        noshow += 1
-  
+  if ((nocase and ((username.lower() in husers.lower()) or (g_name.lower() in hgroups.lower()))) or
+      ((username in husers) or (g_name in hgroups))):
+    if showall:
+      maskchar = '*'
+    else:
+      noshow += 1
+
   if noshow == 0 and mpaths:
     if ((maskchar == '') and (currentdir in mpaths.split(' ') or (f'{currentdir}/' in mpaths.split(' ')))):
       if showall:

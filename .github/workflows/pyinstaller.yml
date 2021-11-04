@@ -1,0 +1,4 @@
+on: workflow_dispatch:
+
+- name: PyInstaller Linux
+  uses: JackMcKew/pyinstaller-action-linux@0.1.4e

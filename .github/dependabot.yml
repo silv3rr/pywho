@@ -4,4 +4,5 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
-    reviewers: "silv3rr"
+    reviewers:
+      - "silv3rr"

@@ -6,6 +6,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+    - name: Show OS version
+      run: cat /etc/os-release
     - name: Package Application
       uses: JackMcKew/pyinstaller-action-linux@main
       with:

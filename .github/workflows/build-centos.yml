@@ -10,7 +10,7 @@ jobs:
       - name: Install packages, create venv, pip install, run Build  
         run: |
           #yum groupinstall -y "Development Tools" && \
-          yum install -y ucl python3-devel python3-pip python3-virtualenv && \
+          yum install -y python3-devel python3-pip python3-virtualenv ucl && \
           rpm -i https://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/u/upx-3.96-9.el7.x86_64.rpm && \
           python3 -m venv venv && \
           source venv/bin/activate && \

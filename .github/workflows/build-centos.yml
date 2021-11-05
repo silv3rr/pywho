@@ -9,8 +9,8 @@ jobs:
       - uses: actions/checkout@v2
       - name: Install packages, create venv, pip install, run Build  
         run: |
-          id
-          yum install -y upx python3-pip python3-venv && \
+          yum groupinstall "Development Tools" && \
+          yum install -y upx python3-pip python3-virtualenv && \
           python3 -m venv venv && \
           source venv/bin/activate && \
           pip3 install --upgrade pip wheel setuptools && \

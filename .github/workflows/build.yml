@@ -8,7 +8,7 @@ jobs:
       - name: Show OS version
         run: cat /etc/os-release
       - name: Apt install packages  
-        run: apt install -y upx-ucl python3-pip python3-venv
+        run: sudo apt install -y upx-ucl python3-pip python3-venv
       - name: Create and activate venv
         run: python3 -m venv venv && source venv/bin/activate
       - name: Pip install packages

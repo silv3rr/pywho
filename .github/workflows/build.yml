@@ -11,7 +11,8 @@ jobs:
         run: |
           python3 -m venv venv && \
           source venv/bin/activate && \
-          pip3 install --upgrade pip wheel setuptools && \ 
+          pip3 install --upgrade pip wheel setuptools && \
+          pip3 install -r requirements.txt && \
           pip3 install pyinstaller sysv-ipc geoip2 && \
           ./build.sh
       - uses: actions/upload-artifact@v2
@@ -21,3 +22,25 @@ jobs:
             *.tar.gz
             *.sha512sum
           if-no-files-found: error
+
+  container-job:
+    runs-on: ubuntu-latest
+    container: centos:7
+    steps:
+      - uses: actions/checkout@v2
+      - name: Apt install packages  
+        run: sudo apt-get install -y upx-ucl python3-pip python3-venv
+      - name: Create venv, pip install and build
+        run: |
+          python3 -m venv venv && \
+          source venv/bin/activate && \
+          pip3 install --upgrade pip wheel setuptools && \
+          pip3 install -r requirements.txt && \
+          pip3 install pyinstaller sysv-ipc geoip2 && \
+          ./build.sh
+      - uses: actions/upload-artifact@v2
+        with:
+          name: artifact-build-ubuntu
+          path: |
+            *.tar.gz
+            *.sha512sum

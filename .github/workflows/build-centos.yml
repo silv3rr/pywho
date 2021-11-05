@@ -10,7 +10,7 @@ jobs:
       - name: Install packages, create venv, pip install, run Build  
         run: |
           id
-          sudo yum install -y upx python3-pip python3-venv && \
+          yum install -y upx python3-pip python3-venv && \
           python3 -m venv venv && \
           source venv/bin/activate && \
           pip3 install --upgrade pip wheel setuptools && \

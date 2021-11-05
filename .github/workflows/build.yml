@@ -9,16 +9,16 @@ jobs:
         run: cat /etc/os-release
       - name: Apt install packages  
         run: sudo apt install -y upx-ucl python3-pip python3-venv
-      - name: Create and activate venv
-        run: python3 -m venv venv && source venv/bin/activate
-      - name: Pip install packages
-        run: pip3 install pyinstaller sysv-ipc geoip2
-      - name: Build
-        run: build.sh
+      - name: Create venv, pip install and build
+        run: |
+          python3 -m venv venv && \
+          source venv/bin/activate && \
+          pip3 install pyinstaller sysv-ipc geoip2 && \
+          ./build.sh
       - uses: actions/upload-artifact@v2
         with:
           name: artifact-build-test
           path: |
             *.tar.gz
             *.sha512sum
-          if-no-files-found: error  
+          if-no-files-found: error

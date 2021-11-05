@@ -1,0 +1,24 @@
+name: Build
+on: workflow_dispatch
+jobs:
+  # Build in Ubuntu VM
+  vm-build-job:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install packages, create venv, pip install, run Build  
+        run: |
+          sudo apt-get install -y upx-ucl python3-pip python3-venv && \
+          python3 -m venv venv && \
+          source venv/bin/activate && \
+          pip3 install --upgrade pip wheel setuptools && \
+          pip3 install -r requirements.txt && \
+          pip3 install pyinstaller sysv-ipc geoip2 && \
+          ./build.sh
+      - uses: actions/upload-artifact@v2
+        with:
+          name: artifact-build-ubuntu
+          path: |
+            *.tar.gz
+            *.sha512sum
+          if-no-files-found: error

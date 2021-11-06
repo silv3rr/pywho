@@ -18,8 +18,10 @@ jobs:
     container: centos:7
     steps:
       # get git-2.5 from softwarecollections since git-1.8 from base repo is too old for gh-actions
+      - name: Install git-2.5
       - run: |
-          yum install -y centos-release-scl sclo-git25 && ln -s /opt/rh/sclo-git25/root/usr/bin/git /usr/bin/git
+          yum install -y centos-release-scl && yum install -y sclo-git25
+          ln -s /opt/rh/sclo-git25/root/usr/bin/git /usr/bin/git
       - uses: actions/checkout@v2
       - name: Run yum, venv, pip, build and git commit
         run: |

@@ -1,3 +1,7 @@
+name: Build Debian
+on: workflow_dispatch
+
+jobs:
   # Build Debian 10
   container-job:
       runs-on: ubuntu-latest

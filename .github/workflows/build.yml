@@ -7,14 +7,11 @@ on:
 
 jobs:
   ubuntu-vm-build-job:
-    name: Build for Ubuntu 20.04
-    #runs-on: ubuntu-latest
+    name: Build for Ubuntu
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
-      - name: Install packages, create venv, pip install, run {{ runner_os }} Build  
-        #env:
-        #  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install packages, create venv, pip install, run Ubuntu Build  
         run: |
           python3 -m venv venv && \
           . venv/bin/activate && \
@@ -26,7 +23,6 @@ jobs:
           git config --global user.email "github-actions[bot]" && \
           git config --global user.name "41898282+github-actions[bot]@users.noreply.github.com" && \
           git add bin && git commit -m "update ubuntu binary" && git push
-
       # - uses: actions/upload-artifact@v2
       #  with:
       #    name: artifact-build-ubuntu
@@ -34,5 +30,55 @@ jobs:
       #      *.tar.gz
       #      *.sha512sum
       #    if-no-files-found: error
-
-  
+ 
+  debian-container-build-job:
+    name: Build for Debian
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - debian-release: buster
+            python-version: 3.7
+          - debian-release: bullseye
+            python-version: 3.9
+      fail-fast: false
+    container: python:${{ matrix.python-version }}-${{ matrix.debian-release }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install packages, create venv, pip install, run ${{ matrix.debian-release }} Build
+        run: |
+          DEBIAN_FRONTEND=noninteractive apt-get update -y && \
+          apt-get install -y upx-ucl && \
+          python3 -m venv venv && \
+          . venv/bin/activate && \
+          pip3 install --upgrade pip wheel setuptools && \
+          pip3 install -r requirements.txt && \
+          pip3 install pyinstaller sysv-ipc geoip2 && \
+          ./build.sh
+          mv -f *.tar.gz *.sha512sum bin && \
+          git config --global user.email "github-actions[bot]" && \
+          git config --global user.name "41898282+github-actions[bot]@users.noreply.github.com" && \
+          git add bin && git commit -m "update debian binaries" && git push
+            
+  centos7-container-build-job:
+    name: Build for CentOS 7
+    runs-on: ubuntu-latest
+    container: centos:7
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install packages, create venv, pip install, run centos7 Build
+        run: |
+          #yum groupinstall -y "Development Tools" && \
+          yum install -y gcc python3-devel python3-pip python3-virtualenv && \
+          rpm -i https://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/u/ucl-1.03-24.el7.x86_64.rpm && \
+          rpm -i https://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/u/upx-3.96-9.el7.x86_64.rpm && \
+          python3 -m venv venv && \
+          . venv/bin/activate && \
+          pip3 install --upgrade pip wheel setuptools && \
+          pip3 install -r requirements.txt && \
+          pip3 install pyinstaller sysv-ipc geoip2 && \
+          ./build.sh
+          mv -f *.tar.gz *.sha512sum bin && \
+          git config --global user.email "github-actions[bot]" && \
+          git config --global user.name "41898282+github-actions[bot]@users.noreply.github.com" && \
+          git add bin && git commit -m "update centos binary" && git push

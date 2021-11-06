@@ -5,13 +5,14 @@ on:
     - 'pywho.py'
   workflow_dispatch:
 
+env:
+  GIT_USER_NAME: github-actions[bot]
+  GIT_USER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+
 jobs:
   ubuntu-vm-build-job:
     name: Build for Ubuntu
     runs-on: ubuntu-20.04
-    env:
-      GIT_USER_NAME: github-actions[bot]
-      GIT_USER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
     steps:
       - uses: actions/checkout@v2
       - name: Install pkgs, create venv, pip install, run build, git commit

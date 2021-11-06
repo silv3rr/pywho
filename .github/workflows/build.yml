@@ -20,7 +20,7 @@ jobs:
           pip3 install -r requirements.txt && \
           pip3 install pyinstaller sysv-ipc geoip2 && \
           ./build.sh && \
-          mv -f *.tar.gz *.sha12sum bin && \
+          mv -f *.tar.gz *.sha512sum bin && \
           git add bin && git commit -m "update ubuntu binary" && git push
       # - uses: actions/upload-artifact@v2
       #  with:
@@ -30,8 +30,8 @@ jobs:
       #      *.sha512sum
       #    if-no-files-found: error
 
-  # Build for Debian
   debian-container-build-job:
+    name: Build for Debian
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -55,7 +55,7 @@ jobs:
           pip3 install -r requirements.txt && \
           pip3 install pyinstaller sysv-ipc geoip2 && \
           ./build.sh
-          mv -f *.tar.gz *.sha12sum bin && \
+          mv -f *.tar.gz *.sha512sum bin && \
           git add bin && git commit -m "update debian binaries" && git push
             
   centos7-container-build-job:
@@ -64,7 +64,7 @@ jobs:
     container: centos:7
     steps:
       - uses: actions/checkout@v2
-      - name: Install packages, create venv, pip install, run Build  
+      - name: Install packages, create venv, pip install, run centos7 Build
         run: |
           #yum groupinstall -y "Development Tools" && \
           yum install -y gcc python3-devel python3-pip python3-virtualenv && \
@@ -76,5 +76,5 @@ jobs:
           pip3 install -r requirements.txt && \
           pip3 install pyinstaller sysv-ipc geoip2 && \
           ./build.sh
-          mv -f *.tar.gz *.sha12sum bin && \
+          mv -f *.tar.gz *.sha512sum bin && \
           git add bin && git commit -m "update centos binary" && git push

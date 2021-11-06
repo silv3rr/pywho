@@ -12,14 +12,15 @@ jobs:
             python-version: 3.7
           - debian-release: bullseye
             python-version: 3.9
+      fail-fast: false
     # container: debian:10
     container: python:${{ matrix.python-version }}-${{ matrix.debian-release }}
     steps:
       - uses: actions/checkout@v2
       - name: Install packages, create venv, pip install, run ${{ matrix.debian-release }} Build
         run: |
-          # DEBIAN_FRONTEND=noninteractive apt-get update -y && \
-          #apt-get install -y upx-ucl python3-pip python3-venv && \
+          DEBIAN_FRONTEND=noninteractive apt-get update -y && \
+          # apt-get install -y upx-ucl python3-pip python3-venv && \
           apt-get install -y upx-ucl && \
           python3 -m venv venv && \
           pwd; ls -la && \

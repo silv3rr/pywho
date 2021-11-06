@@ -13,6 +13,7 @@ jobs:
           run: |
             #DEBIAN_FRONTEND=noninteractive apt-get update -y && \
             #apt-get install -y upx-ucl python3-pip python3-venv && \
+            apt-get install -y upx-ucl && \
             python3 -m venv venv && \
             pwd; ls -la && \
             . venv/bin/activate && \
@@ -22,7 +23,7 @@ jobs:
             ./build.sh
         - uses: actions/upload-artifact@v2
           with:
-            name: artifact-build-centos
+            name: artifact-build-debian-10
             path: |
               *.tar.gz
               *.sha512sum

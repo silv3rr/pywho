@@ -31,7 +31,7 @@ jobs:
           pip3 install -r requirements.txt
           pip3 install pyinstaller sysv-ipc geoip2
           ./build.sh && mv -f *.tar.gz *.sha512sum bin
-          id; command -v git; ls -la /usr/bin/git; pwd; ls -la
+          id; git --version; ls -la /usr/bin/git; pwd; ls -la
           git config --global user.name "${{ env.GIT_USER_NAME }}"
           git config --global user.email "${{ env.GIT_USER_EMAIL }}"
           git pull && git add bin && git commit -m "update centos binary" && git push

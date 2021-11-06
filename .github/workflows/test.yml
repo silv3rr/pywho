@@ -21,7 +21,7 @@ jobs:
       - name: Install git-2.18
         run: |
           yum install -y centos-release-scl && yum install -y rh-git218
-          cp -v -rf /opt/rh/http24/root/* /opt/rh/rh-git218/root/* /
+          cp -v -rf /opt/rh/httpd24/root/* /opt/rh/rh-git218/root/* /
           git --version; ls -la /usr/bin/git
       - uses: actions/checkout@v2
       - name: Run yum, venv, pip, build and git commit

@@ -15,7 +15,7 @@ jobs:
             #apt-get install -y upx-ucl python3-pip python3-venv && \
             python3 -m venv venv && \
             pwd; ls -la && \
-            source venv/bin/activate && \
+            . venv/bin/activate && \
             pip3 install --upgrade pip wheel setuptools && \
             pip3 install -r requirements.txt && \
             pip3 install pyinstaller sysv-ipc geoip2 && \

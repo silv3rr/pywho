@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Build Ubuntu
-  vm-build-job:
+  # Build for Ubuntu
+  ubuntu-vm-build-job:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -29,8 +29,8 @@ jobs:
             *.sha512sum
           if-no-files-found: error
 
-  # Build CentOS 7
-  centos-container-job:
+  # Build for CentOS 7
+  centos7-container-build-job:
       runs-on: ubuntu-latest
       container: centos:7
       steps:

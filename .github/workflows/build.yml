@@ -24,7 +24,7 @@ jobs:
           ./build.sh && mv -f *.tar.gz *.sha512sum bin && \
           git config --global user.name "${{ env.GIT_USER_NAME }}" && \
           git config --global user.email "${{ env.GIT_USER_EMAIL }}" && \
-          git add bin && git commit -m "update ubuntu binary" && git push
+          git pull && git add bin && git commit -m "update ubuntu binary" && git push
       # - uses: actions/upload-artifact@v2
       #  with:
       #    name: artifact-build-ubuntu
@@ -58,7 +58,7 @@ jobs:
           ./build.sh && mv -f *.tar.gz *.sha512sum bin && \
           git config --global user.name "${{ env.GIT_USER_NAME }}" && \
           git config --global user.email "${{ env.GIT_USER_EMAIL }}" && \
-          git add bin && git commit -m "update debian binaries" && git push
+          git pull && git add bin && git commit -m "update debian binaries" && git push
             
   centos7-container-build-job:
     name: Build for CentOS 7
@@ -79,4 +79,4 @@ jobs:
           ./build.sh && mv -f *.tar.gz *.sha512sum bin && \
           git config --global user.name "${{ env.GIT_USER_NAME }}" && \
           git config --global user.email "${{ env.GIT_USER_EMAIL }}" && \
-          git add bin && git commit -m "update centos binary" && git push
+          git pull && git add bin && git commit -m "update centos binary" && git push

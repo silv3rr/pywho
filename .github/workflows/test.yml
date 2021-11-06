@@ -17,11 +17,11 @@ jobs:
     runs-on: ubuntu-latest
     container: centos:7
     steps:
-      # get git-2.5 from softwarecollections since git-1.8 from base repo is too old for gh-actions
-      - name: Install git-2.5
+      # get git-2.18 from softwarecollections since git-1.8 from base repo is too old for gh-actions
+      - name: Install git-2.18
         run: |
-          yum install -y centos-release-scl && yum install -y sclo-git25
-          cp -rf /opt/rh/sclo-git25/root/* /
+          yum install -y centos-release-scl && yum install -y sclo-git218
+          echo -e '#!/bin/sh\nsource scl_source enable sclo-git218' > /etc/profile.d/enable_sclo-git218.sh
           git --version; ls -la /usr/bin/git
       - uses: actions/checkout@v2
       - name: Run yum, venv, pip, build and git commit

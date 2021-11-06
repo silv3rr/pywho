@@ -1,5 +1,10 @@
 name: Build
-on: workflow_dispatch
+on:
+  #push:
+  #  paths:
+  #  - 'pywho.py'
+  workflow_dispatch:
+
 jobs:
   # Build Ubuntu
   vm-build-job:

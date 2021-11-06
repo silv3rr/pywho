@@ -16,7 +16,7 @@ jobs:
           DEBIAN_FRONTEND=noninteractive && \
           sudo apt-get install -y upx-ucl python3-pip python3-venv && \
           python3 -m venv venv && \
-          source venv/bin/activate && \
+          . venv/bin/activate && \
           pip3 install --upgrade pip wheel setuptools && \
           pip3 install -r requirements.txt && \
           pip3 install pyinstaller sysv-ipc geoip2 && \
@@ -42,7 +42,7 @@ jobs:
             rpm -i https://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/u/ucl-1.03-24.el7.x86_64.rpm && \
             rpm -i https://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/u/upx-3.96-9.el7.x86_64.rpm && \
             python3 -m venv venv && \
-            source venv/bin/activate && \
+            . venv/bin/activate && \
             pip3 install --upgrade pip wheel setuptools && \
             pip3 install -r requirements.txt && \
             pip3 install pyinstaller sysv-ipc geoip2 && \

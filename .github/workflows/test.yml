@@ -20,7 +20,7 @@ jobs:
       # get git-2.18 from softwarecollections since git-1.8 from base repo is too old for gh-actions
       - name: Install git-2.18
         run: |
-          yum install -y centos-release-scl && yum install -y sclo-git218
+          yum install -y centos-release-scl && yum install -y rh-git218
           echo -e '#!/bin/sh\nsource scl_source enable sclo-git218' > /etc/profile.d/enable_sclo-git218.sh
           git --version; ls -la /usr/bin/git
       - uses: actions/checkout@v2

@@ -21,7 +21,7 @@ jobs:
       - name: Install git-2.18
         run: |
           yum install -y centos-release-scl && yum install -y rh-git218
-          echo -e '#!/bin/sh\nsource scl_source enable sclo-git218' > /etc/profile.d/enable_sclo-git218.sh
+          ln -s /opt/rh/sclo-git25/root/usr/bin/git /usr/bin/git
           git --version; ls -la /usr/bin/git
       - uses: actions/checkout@v2
       - name: Run yum, venv, pip, build and git commit

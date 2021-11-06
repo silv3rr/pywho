@@ -5,13 +5,14 @@ jobs:
   # Build Debian 10
   debian-container-job:
       runs-on: ubuntu-latest
-      container: debian:10
+      #container: debian:10
+      container: python:3.7-buster
       steps:
         - uses: actions/checkout@v2
         - name: Install packages, create venv, pip install, run Build  
           run: |
             #DEBIAN_FRONTEND=noninteractive apt-get update -y && \
-            apt-get install -y upx-ucl python3-pip python3-venv && \
+            #apt-get install -y upx-ucl python3-pip python3-venv && \
             python3 -m venv venv && \
             pwd; ls -la && \
             source venv/bin/activate && \

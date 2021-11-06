@@ -2,28 +2,28 @@ name: Build Debian
 on: workflow_dispatch
 
 jobs:
-  # Build Debian 10
-  debian-container-job:
-      runs-on: ubuntu-latest
-      #container: debian:10
-      container: python:3.7-buster
-      steps:
-        - uses: actions/checkout@v2
-        - name: Install packages, create venv, pip install, run Build  
-          run: |
-            #DEBIAN_FRONTEND=noninteractive apt-get update -y && \
-            #apt-get install -y upx-ucl python3-pip python3-venv && \
-            apt-get install -y upx-ucl && \
-            python3 -m venv venv && \
-            pwd; ls -la && \
-            . venv/bin/activate && \
-            pip3 install --upgrade pip wheel setuptools && \
-            pip3 install -r requirements.txt && \
-            pip3 install pyinstaller sysv-ipc geoip2 && \
-            ./build.sh
-        - uses: actions/upload-artifact@v2
-          with:
-            name: artifact-build-debian-10
-            path: |
-              *.tar.gz
-              *.sha512sum
+  # Build for Debian 10
+  deb10-container-build-job:
+    runs-on: ubuntu-latest
+    #container: debian:10
+    container: python:3.7-buster
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install packages, create venv, pip install, run Build  
+        run: |
+          #DEBIAN_FRONTEND=noninteractive apt-get update -y && \
+          #apt-get install -y upx-ucl python3-pip python3-venv && \
+          apt-get install -y upx-ucl && \
+          python3 -m venv venv && \
+          pwd; ls -la && \
+          . venv/bin/activate && \
+          pip3 install --upgrade pip wheel setuptools && \
+          pip3 install -r requirements.txt && \
+          pip3 install pyinstaller sysv-ipc geoip2 && \
+          ./build.sh
+      - uses: actions/upload-artifact@v2
+        with:
+          name: artifact-build-debian-10
+          path: |
+            *.tar.gz
+            *.sha512sum

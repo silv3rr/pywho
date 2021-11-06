@@ -19,8 +19,7 @@ jobs:
     steps:
       # get git-2.5 from softwarecollections since git-1.8 from base repo is too old for gh-actions
       - run: |
-          yum install -y centos-release-scl && yum install -y sclo-git25 && \
-          echo -e '#!/bin/sh\nsource scl_source enable sclo-git25' > /etc/profile.d/enable_sclo-git25.sh
+          yum install -y centos-release-scl sclo-git25 && ln -s /opt/rh/sclo-git25/root/usr/bin/git /usr/bin/git
       - uses: actions/checkout@v2
       - name: Run yum, venv, pip, build and git commit
         run: |
@@ -32,7 +31,7 @@ jobs:
           pip3 install -r requirements.txt && \
           pip3 install pyinstaller sysv-ipc geoip2 && \
           ./build.sh && mv -f *.tar.gz *.sha512sum bin && \
-          pwd && ls -la
+          id; which git; ls -la /usr/bin/git; pwd; ls -la
           git config --global user.name "${{ env.GIT_USER_NAME }}" && \
           git config --global user.email "${{ env.GIT_USER_EMAIL }}" && \
           git pull && git add bin && git commit -m "update centos binary" && git push

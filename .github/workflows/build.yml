@@ -1,13 +1,13 @@
-name: Build
+name: Build pywho
 on:
-  #push:
-  #  paths:
-  #  - 'pywho.py'
+  push:
+    paths:
+    - 'pywho.py'
   workflow_dispatch:
 
 jobs:
   ubuntu-vm-build-job:
-    name: Build pywho for Ubuntu 20.04
+    name: Build for Ubuntu 20.04
     #runs-on: ubuntu-latest
     runs-on: ubuntu-20.04
     steps:
@@ -30,8 +30,40 @@ jobs:
             *.sha512sum
           if-no-files-found: error
 
+  # Build for Debian
+  debian-container-build-job:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - debian-release: buster
+            python-version: 3.7
+          - debian-release: bullseye
+            python-version: 3.9
+      fail-fast: false
+    # container: debian:10
+    container: python:${{ matrix.python-version }}-${{ matrix.debian-release }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install packages, create venv, pip install, run ${{ matrix.debian-release }} Build
+        run: |
+          DEBIAN_FRONTEND=noninteractive apt-get update -y && \
+          apt-get install -y upx-ucl && \
+          python3 -m venv venv && \
+          . venv/bin/activate && \
+          pip3 install --upgrade pip wheel setuptools && \
+          pip3 install -r requirements.txt && \
+          pip3 install pyinstaller sysv-ipc geoip2 && \
+          ./build.sh
+      - uses: actions/upload-artifact@v2
+        with:
+          name: artifact-build-debian
+          path: |
+            *.tar.gz
+            *.sha512sum
+            
   centos7-container-build-job:
-    name: Build pywho for CentOS 7
+    name: Build for CentOS 7
     runs-on: ubuntu-latest
     container: centos:7
     steps:
@@ -54,4 +86,3 @@ jobs:
           path: |
             *.tar.gz
             *.sha512sum
-

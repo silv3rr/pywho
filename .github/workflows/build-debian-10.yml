@@ -10,7 +10,7 @@ jobs:
         - uses: actions/checkout@v2
         - name: Install packages, create venv, pip install, run Build  
           run: |
-            apt-get update -y && \
+            DEBIAN_FRONTEND=noninteractive apt-get update -y && \
             apt-get install -y upx-ucl python3-pip python3-venv && \
             python3 -m venv venv && \
             source venv/bin/activate && \

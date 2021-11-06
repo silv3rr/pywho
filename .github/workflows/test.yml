@@ -22,6 +22,7 @@ jobs:
       - run: |
           yum install -y centos-release-scl && yum install -y sclo-git25
           ln -s /opt/rh/sclo-git25/root/usr/bin/git /usr/bin/git
+          git --version; ls -la /usr/bin/git
       - uses: actions/checkout@v2
       - name: Run yum, venv, pip, build and git commit
         run: |

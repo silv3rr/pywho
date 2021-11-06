@@ -19,7 +19,7 @@ jobs:
     steps:
       # get git-2.5 from softwarecollections since git-1.8 from base repo is too old for gh-actions
       - run: |
-          yum install -y centos-release-scl && yum install sclo-git25 && \
+          yum install -y centos-release-scl && yum install -y sclo-git25 && \
           echo -e '#!/bin/sh\nsource scl_source enable sclo-git25' > /etc/profile.d/enable_sclo-git25.sh
       - uses: actions/checkout@v2
       - name: Run yum, venv, pip, build and git commit

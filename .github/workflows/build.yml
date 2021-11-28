@@ -1,8 +1,10 @@
 name: Build pywho
 on:
   push:
+    branches:
+      - main
     paths:
-    - 'pywho.py'
+      - 'pywho.py'
   workflow_dispatch:
 
 env:

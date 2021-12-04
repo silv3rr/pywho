@@ -29,10 +29,8 @@ jobs:
           # git pull && git add bin && git commit -m "update ubuntu binary" && git push
       - uses: actions/upload-artifact@v2
         with:
-          name: artifact-build-ubuntu
-          path: |
-            *.tar.gz
-            *.sha512sum
+          name: build-ubuntu-artifacts
+          path: ./bin/*
           if-no-files-found: error
  
   debian-container-build-job:
@@ -63,10 +61,8 @@ jobs:
           # git pull && git add bin && git commit -m "update debian binaries" && git push
       - uses: actions/upload-artifact@v2
         with:
-          name: artifact-build-debian
-          path: |
-            *.tar.gz
-            *.sha512sum
+          name: build-debian-artifacts
+          path: ./bin/*
           if-no-files-found: error
   
   centos7-container-build-job:
@@ -95,10 +91,8 @@ jobs:
           # git pull && git add bin && git commit -m "update centos binary" && git push
       - uses: actions/upload-artifact@v2
         with:
-          name: artifact-build-centos
-          path: |
-            *.tar.gz
-            *.sha512sum
+          name: build-centos-artifacts
+          path: ./bin/*
           if-no-files-found: error
 
   create-release:
@@ -113,12 +107,13 @@ jobs:
           path: bin
       - name: Create gh release using 'hub'
         run: |
-          hub release create $(find ./bin -type f -printf '-a %p ') slv-pywho-v$(date +%Y%m%d) -F - <<'#####'
+          hub release create $(find -type f -printf '-a %p ') slv-pywho-v$(date +%Y%m%d) -F - <<'#####'
           pywho
 
           Pzs-ng's sitewho ported to Python, uses SHM and glftpd's 'ONLINE' C struct.
 
           Download separate binaries for your specific OS
           Source code archive also contains all binaries (zip/tar.gz)
+        working-directory: ./bin
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

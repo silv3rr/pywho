@@ -6,8 +6,7 @@ jobs:
     name: Create release and upload assets      
     runs-on: ubuntu-latest
     steps:
-      - name: Create release
-        uses: actions/create-release@v1
+      - uses: actions/create-release@v1
         id: create_release
         with:
           tag_name: ${{ github.ref }}
@@ -19,8 +18,7 @@ jobs:
             Source code (zip) (tar.gz) archive also contains all binaries
           draft: false
           prerelease: false
-      - name: Upload assets
-        uses: actions/upload-release-asset@v1
+      - uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

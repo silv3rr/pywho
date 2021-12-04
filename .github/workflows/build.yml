@@ -17,23 +17,21 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
-      - name: Run venv, pip, build and git commit
+      - name: Run venv, pip, build and upload artifacts
         run: |
           python3 -m venv venv && . venv/bin/activate
           pip3 install --upgrade pip wheel setuptools
           pip3 install -r requirements.txt
           pip3 install pyinstaller sysv-ipc geoip2
-          ./build.sh && mv -f *.tar.gz *.sha512sum ./bin
-          git config --global user.name "${{ env.GIT_USER_NAME }}"
-          git config --global user.email "${{ env.GIT_USER_EMAIL }}"
-          git pull && git add bin && git commit -m "update ubuntu binary" && git push
-      # - uses: actions/upload-artifact@v2
-      #   with:
-      #     name: artifact-build-ubuntu
-      #     path: |
-      #       *.tar.gz
-      #       *.sha512sum
-      #     if-no-files-found: error
+          ./build.sh && mkdir ./build-ubuntu && mv -f *.tar.gz *.sha512sum ./build-ubuntu
+          # git config --global user.name "${{ env.GIT_USER_NAME }}"
+          # git config --global user.email "${{ env.GIT_USER_EMAIL }}"
+          # git pull && git add bin && git commit -m "update ubuntu binary" && git push
+      - uses: actions/upload-artifact@v2
+        with:
+          name: build-ubuntu-artifacts
+          path: ./build-ubuntu/*
+          if-no-files-found: error
  
   debian-container-build-job:
     name: Build for Debian
@@ -49,7 +47,7 @@ jobs:
     container: python:${{ matrix.python-version }}-${{ matrix.debian-release }}
     steps:
       - uses: actions/checkout@v2
-      - name: Run apt, venv, pip, build and git commit
+      - name: Run apt, venv, pip, build and upload artifacts
         run: |
           DEBIAN_FRONTEND=noninteractive apt-get update -y
           apt-get install -y upx-ucl
@@ -57,10 +55,15 @@ jobs:
           pip3 install --upgrade pip wheel setuptools
           pip3 install -r requirements.txt
           pip3 install pyinstaller sysv-ipc geoip2
-          ./build.sh && mv -f *.tar.gz *.sha512sum ./bin
-          git config --global user.name "${{ env.GIT_USER_NAME }}"
-          git config --global user.email "${{ env.GIT_USER_EMAIL }}"
-          git pull && git add bin && git commit -m "update debian binaries" && git push
+          ./build.sh && mkdir ./build-debian && mv -f *.tar.gz *.sha512sum ./build-debian
+          # git config --global user.name "${{ env.GIT_USER_NAME }}"
+          # git config --global user.email "${{ env.GIT_USER_EMAIL }}"
+          # git pull && git add bin && git commit -m "update debian binaries" && git push
+      - uses: actions/upload-artifact@v2
+        with:
+          name: build-debian-artifacts
+          path: ./build-debian/*
+          if-no-files-found: error
   
   centos7-container-build-job:
     name: Build for CentOS 7
@@ -72,9 +75,8 @@ jobs:
         run: |
           yum install -y centos-release-scl && yum install -y rh-git218
           cp -v -rf /opt/rh/httpd24/root/* /opt/rh/rh-git218/root/* / || true
-          git --version; ls -la /usr/bin/git
       - uses: actions/checkout@v2
-      - name: Run yum, venv, pip, build and git commit
+      - name: Run yum, venv, pip, build and upload artifacts
         run: |
           yum install -y gcc python3-devel python3-pip python3-virtualenv
           yum install -y https://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/u/ucl-1.03-24.el7.x86_64.rpm
@@ -83,27 +85,36 @@ jobs:
           pip3 install --upgrade pip wheel setuptools
           pip3 install -r requirements.txt
           pip3 install pyinstaller sysv-ipc geoip2
-          ./build.sh && mv -f *.tar.gz *.sha512sum ./bin
-          id; git --version; ls -la /usr/bin/git; pwd; ls -la
-          git config --global user.name "${{ env.GIT_USER_NAME }}"
-          git config --global user.email "${{ env.GIT_USER_EMAIL }}"
-          git pull && git add bin && git commit -m "update centos binary" && git push
+          ./build.sh  && mkdir ./build-centos && mv -f *.tar.gz *.sha512sum ./build-centos
+          # git config --global user.name "${{ env.GIT_USER_NAME }}"
+          # git config --global user.email "${{ env.GIT_USER_EMAIL }}"
+          # git pull && git add bin && git commit -m "update centos binary" && git push
+      - uses: actions/upload-artifact@v2
+        with:
+          name: build-centos-artifacts
+          path: ./build-centos/*
+          if-no-files-found: error
 
   create-release:
-    name: Checkout and create release
+    name: Get artifacts, create release
     runs-on: ubuntu-latest
     needs: [ubuntu-vm-build-job, debian-container-build-job, centos7-container-build-job]
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Create release using 'hub'
+      - uses: actions/checkout@v2
+      - name: Download artifacts
+        uses: actions/download-artifact@v2
+        with:
+          path: build-artifacts
+      - name: Create gh release using 'hub'
         run: |
-          hub release create $(find ./bin -type f -printf '-a %p ') slv-pywho-v$(date +%Y%m%d) -F - <<'#####'
+          hub release create $(find -type f -printf '-a %p ') slv-pywho-v$(date +%Y%m%d) -F - <<'#####'
           pywho
 
           Pzs-ng's sitewho ported to Python, uses SHM and glftpd's 'ONLINE' C struct.
 
           Download separate binaries for your specific OS
           Source code archive also contains all binaries (zip/tar.gz)
+          #####
+        working-directory: ./build-artifacts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

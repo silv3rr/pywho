@@ -23,7 +23,7 @@ jobs:
           pip3 install --upgrade pip wheel setuptools
           pip3 install -r requirements.txt
           pip3 install pyinstaller sysv-ipc geoip2
-          ./build.sh && mv -f *.tar.gz *.sha512sum bin
+          ./build.sh && mv -f *.tar.gz *.sha512sum ./bin
           git config --global user.name "${{ env.GIT_USER_NAME }}"
           git config --global user.email "${{ env.GIT_USER_EMAIL }}"
           git pull && git add bin && git commit -m "update ubuntu binary" && git push
@@ -57,7 +57,7 @@ jobs:
           pip3 install --upgrade pip wheel setuptools
           pip3 install -r requirements.txt
           pip3 install pyinstaller sysv-ipc geoip2
-          ./build.sh && mv -f *.tar.gz *.sha512sum bin
+          ./build.sh && mv -f *.tar.gz *.sha512sum ./bin
           git config --global user.name "${{ env.GIT_USER_NAME }}"
           git config --global user.email "${{ env.GIT_USER_EMAIL }}"
           git pull && git add bin && git commit -m "update debian binaries" && git push
@@ -83,8 +83,24 @@ jobs:
           pip3 install --upgrade pip wheel setuptools
           pip3 install -r requirements.txt
           pip3 install pyinstaller sysv-ipc geoip2
-          ./build.sh && mv -f *.tar.gz *.sha512sum bin
+          ./build.sh && mv -f *.tar.gz *.sha512sum ./bin
           id; git --version; ls -la /usr/bin/git; pwd; ls -la
           git config --global user.name "${{ env.GIT_USER_NAME }}"
           git config --global user.email "${{ env.GIT_USER_EMAIL }}"
           git pull && git add bin && git commit -m "update centos binary" && git push
+
+  create-new-release:
+    name: Checkout and create release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Create release using 'hub'
+        run: |
+          hub release create $(find bin -type f -printf '-a %p ') TEST4-slv-pywho-v$(date +%Y%m%d) -F - <<'#####'
+          pywho
+
+          Pzs-ng's sitewho ported to Python, uses SHM and glftpd's 'ONLINE' C struct.
+
+          Download separate binaries for your specific OS
+          Source code archive also contains all binaries (zip/tar.gz)

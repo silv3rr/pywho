@@ -23,14 +23,14 @@ jobs:
           pip3 install --upgrade pip wheel setuptools
           pip3 install -r requirements.txt
           pip3 install pyinstaller sysv-ipc geoip2
-          ./build.sh && mv -f *.tar.gz *.sha512sum ./bin
+          ./build.sh && mkdir ./build-ubuntu && mv -f *.tar.gz *.sha512sum ./build-ubuntu
           # git config --global user.name "${{ env.GIT_USER_NAME }}"
           # git config --global user.email "${{ env.GIT_USER_EMAIL }}"
           # git pull && git add bin && git commit -m "update ubuntu binary" && git push
       - uses: actions/upload-artifact@v2
         with:
           name: build-ubuntu-artifacts
-          path: ./bin/*
+          path: ./build-ubuntu/*
           if-no-files-found: error
  
   debian-container-build-job:
@@ -55,14 +55,14 @@ jobs:
           pip3 install --upgrade pip wheel setuptools
           pip3 install -r requirements.txt
           pip3 install pyinstaller sysv-ipc geoip2
-          ./build.sh && mv -f *.tar.gz *.sha512sum ./bin
+          ./build.sh && mkdir ./build-debian && mv -f *.tar.gz *.sha512sum ./build-debian
           # git config --global user.name "${{ env.GIT_USER_NAME }}"
           # git config --global user.email "${{ env.GIT_USER_EMAIL }}"
           # git pull && git add bin && git commit -m "update debian binaries" && git push
       - uses: actions/upload-artifact@v2
         with:
           name: build-debian-artifacts
-          path: ./bin/*
+          path: ./build-debian/*
           if-no-files-found: error
   
   centos7-container-build-job:
@@ -85,14 +85,14 @@ jobs:
           pip3 install --upgrade pip wheel setuptools
           pip3 install -r requirements.txt
           pip3 install pyinstaller sysv-ipc geoip2
-          ./build.sh && mv -f *.tar.gz *.sha512sum ./bin
+          ./build.sh  && mkdir ./build-centos && mv -f *.tar.gz *.sha512sum ./build-centos
           # git config --global user.name "${{ env.GIT_USER_NAME }}"
           # git config --global user.email "${{ env.GIT_USER_EMAIL }}"
           # git pull && git add bin && git commit -m "update centos binary" && git push
       - uses: actions/upload-artifact@v2
         with:
           name: build-centos-artifacts
-          path: ./bin/*
+          path: ./build-centos/*
           if-no-files-found: error
 
   create-release:
@@ -101,10 +101,10 @@ jobs:
     needs: [ubuntu-vm-build-job, debian-container-build-job, centos7-container-build-job]
     steps:
       - uses: actions/checkout@v2
-      - name: Download artifacts to ./bin
+      - name: Download artifacts
         uses: actions/download-artifact@v2
         with:
-          path: bin
+          path: build-artifacts
       - name: Create gh release using 'hub'
         run: |
           hub release create $(find -type f -printf '-a %p ') slv-pywho-v$(date +%Y%m%d) -F - <<'#####'
@@ -114,6 +114,7 @@ jobs:
 
           Download separate binaries for your specific OS
           Source code archive also contains all binaries (zip/tar.gz)
-        working-directory: ./bin
+          #####
+        working-directory: ./build-artifacts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

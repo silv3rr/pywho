@@ -1,3 +1,5 @@
+[![Build pywho](https://github.com/silv3rr/pywho/actions/workflows/build.yml/badge.svg)](https://github.com/silv3rr/pywho/actions/workflows/build.yml)
+
 # PY-WHO!?
 
 ## /pai-hu/
@@ -64,7 +66,9 @@ On Debian just install these packages and run the script:
 Alternatively use venv and pip:
 
 ``` bash
-apt/yum install python3-pip python3-venv
+apt install python3-pip python3-venv
+# -or-
+yum install python3-pip python3-virtualenv
 python3 -m venv venv
 source venv/bin/activate
 pip3 install sysv-ipc
@@ -77,12 +81,11 @@ _If you want to build sysv_ip from src see [https://github.com/osvenskan/sysv_ip
 
 ### 3) Binaries
 
-If you do not want to install python modules, there's also a single executable file available for download:
+If you do not want to install python modules, there's also a single executable file available for [download](releases).
 
-- CentOS 7 [pywho-centos7-python3.6-x86_x64.gz](bin/pywho-centos7-python3.6-x86_x64.tar.gz) ([sha512sum](bin/pywho-centos7-python3.6-x86_x64.sha512sum))
-- Debian 10 [pywho-debian10-python3.7-x86_x64.gz](bin/pywho-debian10-python3.7-x86_x64.tar.gz) ([sha512sum](bin/pywho-debian10-python3.7-x86_x64.sha512sum))
-- Debian 11 [pywho-debian11-python3.9-x86_x64.gz](bin/pywho-debian11-python3.9-x86_x64.tar.gz) ([sha512sum](bin/pywho-debian11-python3.9-x86_x64.sha512sum))
-- Ubuntu 20.04 [pywho-ubuntu20.04-python3.8-x86_x64.tar.gz](bin/pywho-ubuntu20.04-python3.8-x86_x64.tar.gz) ([sha512sum](bin/pywho-ubuntu20.04-python3.8-x86_x64.sha512sum))
+Supported OS': CentOS 7, Debian 10, Debian 11 and Ubuntu 20.04
+
+Get the files here: [Releases](releases)
 
 ## Configuration
 
@@ -109,6 +112,9 @@ The build script will check and warn about wrong python version and missing modu
 - You get this message at runtime: `INTERNAL ERROR: cannot create temporary directory!`
     - Make sure your tmp dir exists with `+x` and `+t` (sticky bit).
     - When running chrooted from glftpd you'll need to `mkdir -m 1777 -p /glftpd/var/tmp`
+
+- Enabling geoip2 is slow!
+    - Yes.
 
 - If geoip2 and spy mode are enabled you can run out of your free geoip queries
     - Max is 1000/day, ip lookups are cached in mem only and reset on restart of pywho

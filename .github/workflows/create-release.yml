@@ -26,7 +26,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-            # glob doesn work :(
+          # glob doesn work :(
           asset_path: |
             ./bin/*.tar.gz
             ./bin/*.sha512sum

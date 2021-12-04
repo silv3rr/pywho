@@ -1,4 +1,4 @@
-name: Build pywho
+name: Create release
 on:
   push:
     branches:
@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  create-new-release:
-    name: Checkout, create release and upload assets      
+  create-release:
+    name: Create release and upload assets      
     runs-on: ubuntu-latest
     steps:
       - name: Create release

@@ -111,9 +111,8 @@ jobs:
           pywho
 
           Pzs-ng's sitewho ported to Python, uses SHM and glftpd's 'ONLINE' C struct.
-
-          Download separate binaries for your specific OS
-          Source code archive also contains all binaries (zip/tar.gz)
+          
+          Download binaries for your specific OS
           #####
         working-directory: ./build-artifacts
         env:

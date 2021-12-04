@@ -1,8 +1,3 @@
-<<<<<<< HEAD
-[![Build pywho](https://github.com/silv3rr/pywho/actions/workflows/build.yml/badge.svg)](https://github.com/silv3rr/pywho/actions/workflows/build.yml)
-
-=======
->>>>>>> b1b19a2bd7c67f5ca1d7548d6fe8ac4868bcc748
 # PY-WHO!?
 
 ## /pai-hu/

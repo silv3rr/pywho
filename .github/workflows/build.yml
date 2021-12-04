@@ -107,6 +107,8 @@ jobs:
           path: build-artifacts
       - name: Create gh release using 'hub'
         run: |
+          git push origin:slv-pywho-v$(date +%Y%m%d)
+          hub release delete slv-pywho-v$(date +%Y%m%d)
           hub release create $(find -type f -printf '-a %p ') slv-pywho-v$(date +%Y%m%d) -F - <<'#####'
           pywho
 

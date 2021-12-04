@@ -1,5 +1,8 @@
+<<<<<<< HEAD
 [![Build pywho](https://github.com/silv3rr/pywho/actions/workflows/build.yml/badge.svg)](https://github.com/silv3rr/pywho/actions/workflows/build.yml)
 
+=======
+>>>>>>> b1b19a2bd7c67f5ca1d7548d6fe8ac4868bcc748
 # PY-WHO!?
 
 ## /pai-hu/
@@ -81,11 +84,13 @@ _If you want to build sysv_ip from src see [https://github.com/osvenskan/sysv_ip
 
 ### 3) Binaries
 
-If you do not want to install python modules, there's also a single executable file available for [download](releases).
+[![Build pywho](https://github.com/silv3rr/pywho/actions/workflows/build.yml/badge.svg)](https://github.com/silv3rr/pywho/actions/workflows/build.yml)
 
-Supported OS': CentOS 7, Debian 10, Debian 11 and Ubuntu 20.04
+If you do not want to install python modules, there's also a single executable file available for [download](../../releases).
 
-Get the files here: [Releases](releases)
+Supported OS: CentOS 7, Debian 10, Debian 11 and Ubuntu 20.04
+
+Get the files here: [Releases](../../releases)
 
 ## Configuration
 

@@ -107,9 +107,10 @@ jobs:
           path: build-artifacts
       - name: Create gh release using 'hub'
         run: |
-          git push origin:slv-pywho-v$(date +%Y%m%d)
-          hub release delete slv-pywho-v$(date +%Y%m%d)
-          hub release create $(find -type f -printf '-a %p ') slv-pywho-v$(date +%Y%m%d) -F - <<'#####'
+          TAG=slv-pywho-v$(date +%Y%m%d)
+          git push origin :$TAG
+          hub release delete $TAG
+          hub release create $(find -type f -printf '-a %p ') $TAG -F - <<'#####'
           pywho
 
           Pzs-ng's sitewho ported to Python, uses SHM and glftpd's 'ONLINE' C struct.

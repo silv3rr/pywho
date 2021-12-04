@@ -97,7 +97,7 @@ jobs:
         uses: actions/checkout@v2
       - name: Create release using 'hub'
         run: |
-          hub release create $(find bin -type f -printf '-a %p ') TEST4-slv-pywho-v$(date +%Y%m%d) -F - <<'#####'
+          hub release create $(find bin -type f -printf '-a %p ') slv-pywho-v$(date +%Y%m%d) -F - <<'#####'
           pywho
 
           Pzs-ng's sitewho ported to Python, uses SHM and glftpd's 'ONLINE' C struct.

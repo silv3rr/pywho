@@ -4,7 +4,7 @@
 
 # Required: Python 3.7.3+, sysv-ipc, pyinstaller
 #   python3 -m venv venv && . venv/bin/activate && \
-#   pip3 install sysv_ipc pyinstaller
+#   pip3 install wheel setuptools sysv_ipc pyinstaller
 # Recommended: upx
 #   apt install upx-ucl or yum install upx
 
@@ -61,8 +61,8 @@ if command -V bc >/dev/null 2>&1; then
      PYVER_OK=1
   fi
 else
-  PYVER_MAY="$( echo $PYVER | sed 's/\([0-9]\)\.[0-9]/\1/' )"
-  PYVER_MIN="$( echo $PYVER | sed 's/[0-9]\.\([0-9]\)/\1/' )"
+  PYVER_MAY="$( echo "$PYVER" | sed 's/\([0-9]\)\.[0-9]/\1/' )"
+  PYVER_MIN="$( echo "$PYVER" | sed 's/[0-9]\.\([0-9]\)/\1/' )"
   PYREQVER_MAY="$( echo $PYREQVER | sed 's/\([0-9]\)\.[0-9]/\1/' )"
   PYREQVER_MIN="$( echo $PYREQVER | sed 's/[0-9]\.\([0-9]\)/\1/' )"
   if [ "$PYVER_MAY" -gt "$PYREQVER_MAY" ]; then
@@ -93,7 +93,7 @@ if [ "$PYINSTALLER" -eq 1 ]; then
   command -v pyinstaller >/dev/null 2>&1 || { \
     echo "ERROR: pyinstaller not found, try 'pip install pyinstaller'"; exit 1; \
   }
-  pyinstaller pywho.py $ARGS --noconfirm --onefile && \
+  pyinstaller pywho.py $ARGS --clean --noconfirm --onefile && \
     if [ -e "dist/pywho" ]; then
       printf "\nresult: OK "; ls -la dist/pywho;
       if [ "$PACK" -eq 1 ]; then

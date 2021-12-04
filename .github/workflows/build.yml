@@ -105,3 +105,5 @@ jobs:
 
           Download separate binaries for your specific OS
           Source code archive also contains all binaries (zip/tar.gz)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,8 +1,3 @@
-<<<<<<< HEAD
-[![Build pywho](https://github.com/silv3rr/pywho/actions/workflows/build.yml/badge.svg)](https://github.com/silv3rr/pywho/actions/workflows/build.yml)
-
-=======
->>>>>>> b1b19a2bd7c67f5ca1d7548d6fe8ac4868bcc748
 # PY-WHO!?
 
 ## /pai-hu/
@@ -72,13 +67,14 @@ Alternatively use venv and pip:
 apt install python3-pip python3-venv
 # -or-
 yum install python3-pip python3-virtualenv
+
 python3 -m venv venv
 source venv/bin/activate
 pip3 install sysv-ipc
 pip3 install geoip2   # optional
 ```
 
-Now 'git clone' and run `./pywho.py`
+Now 'git clone' this repo and run `./pywho.py`
 
 _If you want to build sysv_ip from src see [https://github.com/osvenskan/sysv_ip](https://github.com/osvenskan/sysv_ipc)_
 

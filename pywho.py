@@ -6,7 +6,7 @@
 # Uses SHM and glftpd's 'ONLINE' C struct, module sysv_ipc is required         #
 # See README and comments in pywho.conf for install and config instructions    #
 ################################################################################
-VERSION = "211021"                                                       # slv #
+VERSION = "220207"                                                       # slv #
 ################################################################################
 
 import string
@@ -169,7 +169,8 @@ chidden = 1 if count_hidden == True else 0
 
 IPC_KEY = ipc_key if ipc_key else "0x0000DEAD"
 KEY = int(IPC_KEY,16)
-NULL_CHAR = '\0'
+#NULL_CHAR = '\0'
+NULL_CHAR = b'\x00'
 if debug > 3:
   print(f"DEBUG: IPC_KEY={IPC_KEY} KEY={KEY} sysv_ipc.SHM_RDONLY={sysv_ipc.SHM_RDONLY} fmt =", "{:#010x}".format(KEY), id(KEY))
 
@@ -344,10 +345,11 @@ def showusers(mode, ucomp, raw, repeat, user, x, chidden, geoip2_client, downloa
   #     b'STAT'
   #     b'PASV'
   #     b'Connecting...'
-  username = user[x].username.decode().split(NULL_CHAR, 1)[0]
-  tagline = user[x].tagline.decode().split(NULL_CHAR, 1)[0]
-  currentdir = user[x].currentdir.decode().split(NULL_CHAR, 1)[0]
-  u_status = user[x].status.decode().split(NULL_CHAR, 1)[0]
+  # (OLD) glftpd 2.11: username = user[x].username.decode().split(NULL_CHAR, 1)[0]
+  username = user[x].username.split(NULL_CHAR, 1)[0].decode()
+  tagline = user[x].tagline.split(NULL_CHAR, 1)[0].decode()
+  currentdir = user[x].currentdir.split(NULL_CHAR, 1)[0].decode()
+  u_status = user[x].status.split(NULL_CHAR, 1)[0].decode()
   tstop_tv_sec = calendar.timegm(time.gmtime())
   tstop_tv_usec = datetime.datetime.now().microsecond
   host = g_name = traf_dir = None
@@ -359,7 +361,7 @@ def showusers(mode, ucomp, raw, repeat, user, x, chidden, geoip2_client, downloa
 
   # skip if host is empty
   if user[x].host != b'':
-    host = user[x].host.decode().rstrip(NULL_CHAR)
+    host = user[x].host.split(NULL_CHAR, 1)[0].decode()
     (_, addr) = host.split('@', 2)[0:2]
     # ipv4/6
     # if re.search(r'([\d.]{7,}|:)', addr):
@@ -614,7 +616,7 @@ def showusers(mode, ucomp, raw, repeat, user, x, chidden, geoip2_client, downloa
       pct_spy = "{:>4.0f}%:".format(pct)
     if bar:
       if bar == '?->':  
-        bar_spy = "{:<22.22}".format(user[x].status.decode().split(NULL_CHAR, 1)[0][5:]) if (len(status) > 5) else "{:<22.22}".format(' ')
+        bar_spy = "{:<22.22}".format(user[x].status.split(NULL_CHAR, 1)[0].decode()[5:]) if (len(status) > 5) else "{:<22.22}".format(' ')
       else:
         bar_spy = "{:<16.16s}".format(bar)
     else:
@@ -777,7 +779,7 @@ def spy_input_action(user, user_action, screen_redraw):
   # userinfo
   if s_line[:2].strip().isdigit() and int(s_line[:2].strip()) in range(0, x):
     user_action = 1
-    u_name = user[int(s_line.strip())].username.decode().rstrip(NULL_CHAR)
+    u_name = user[int(s_line.strip())].username.split(NULL_CHAR, 1)[0].decode()
     try:
       with open(f'{glrootpath}/ftp-data/users/{u_name}', 'r') as f:
         userfile = f.readlines()
@@ -800,11 +802,11 @@ def spy_input_action(user, user_action, screen_redraw):
       while i < len(user):
         if user[i].username == user[int(s_line)].username:
           tls_msg = tls_mode[user[i].ssl_flag] if user[i].ssl_flag in range(0, len(tls_mode)) else 'UNKNOWN'
-          print(f"  LOGIN [#{i}] from '{user[i].username.decode().split(NULL_CHAR, 1)[0]}' (PID: {user[i].procid}):")
-          print(f'    RHost: {user[i].host.decode().split(NULL_CHAR, 1)[0]} SSL: {tls_msg}')
-          print(f'    Tagline: {user[i].tagline.decode().split(NULL_CHAR, 1)[0]}')
-          print(f'    Currentdir: {user[i].currentdir.decode().split(NULL_CHAR, 1)[0]}')
-          print(f'    Status: {user[i].status.decode().split(NULL_CHAR, 1)[0]}')
+          print(f"  LOGIN [#{i}] from '{user[i].username.split(NULL_CHAR, 1)[0].decode()}' (PID: {user[i].procid}):")
+          print(f'    RHost: {user[i].host.split(NULL_CHAR, 1)[0].decode()} SSL: {tls_msg}')
+          print(f'    Tagline: {user[i].tagline.split(NULL_CHAR, 1)[0].decode()}')
+          print(f'    Currentdir: {user[i].currentdir.split(NULL_CHAR, 1)[0].decode()}')
+          print(f'    Status: {user[i].status.split(NULL_CHAR, 1)[0].decode()}')
         i += 1
       print(string.Template(layout['separator']).substitute(tmpl_sub))
       print(f'  USERFILE:')
@@ -956,7 +958,7 @@ while (_WITH_SPY and spy_mode) or (not spy_mode and repeat < 1):
       u_found = False
       i = 0
       while i < len(user):
-        if user[i].username.decode().rstrip(NULL_CHAR) == user_arg:
+        if user[i].username.split(NULL_CHAR, 1)[0].decode() == user_arg:
           u_found = True
           break
         i += 1

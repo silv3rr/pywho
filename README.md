@@ -45,7 +45,7 @@ Same args and options as pzs-ng sitewho:
 Requirements:
 
 - Python3 and 'sysv_ipc' module, all other modules used are from standard lib
-- only latest glftpd version 2.11a is supported (other versions untested)
+- only latest glftpd version 2.12 is supported (other versions untested)
 
 __Choose 1 of the 3 installation methods below:__
 

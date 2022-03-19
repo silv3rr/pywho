@@ -25,9 +25,10 @@ import collections
 import signal
 import select
 import fcntl
+import tty
 import sysv_ipc
 
-VERSION = "20211126"
+VERSION = "20211218"
 
 # vars used like #ifdef's in orig sitewho.c
 _WITH_ALTWHO = True
@@ -60,7 +61,6 @@ XXL_MODE = 0
 
 # handle args
 ##############
-
 if '-h' in sys.argv or '--help' in sys.argv:
     print(f'./{SCRIPTNAME} [--raw|-ss5|--nbw|--spy] [username]')
     sys.exit(0)
@@ -84,11 +84,17 @@ elif len(sys.argv) > 1 and len(sys.argv[1]) == 5:
     elif '--nbw' in sys.argv:
         USER_IDX, RAW_OUTPUT = 2, 3
     elif '--spy' in sys.argv:
-        USER_IDX, RAW_OUTPUT = 0, 0
-        SPY_MODE = 1
+        if _WITH_SPY:
+            USER_IDX, RAW_OUTPUT = 0, 0
+            SPY_MODE = 1
+        else:
+            sys.exit(0)
     elif '--xxl' in sys.argv:
-        USER_IDX, RAW_OUTPUT = 2, 0
-        XXL_MODE = 1
+        if _WITH_XXL:
+            USER_IDX, RAW_OUTPUT = 2, 0
+            XXL_MODE = 1
+        else:
+            sys.exit(0)
 else:
     if len(sys.argv) > 1 and sys.argv[1][0] == '-':
         print("Error: invalid option, try '-h'\n")
@@ -114,18 +120,18 @@ if len(file_errors) > 0:
     sys.exit(1)
 
 layout = {}
-default = {}
-default['header'] =    ".-[PY-WHO]--------------------------------------------------------------."
-default['footer'] =    "`------------------------------------------------------------[PY-WHO]---'"
-default['separator'] = " -----------------------------------------------------------------------"
 tmpl_str = {}
 tmpl_sub = {}
-tmpl_sub['space'] = ' '
-tmpl_sub['percent'] = '%'
-tls_mode = []
-tls_mode.insert(0, 'None')  # no ssl
-tls_mode.insert(1, 'Control')  # ssl on control
-tls_mode.insert(2, 'Both')  # ssl on control and data
+default = {
+    'header':       ".-[PY-WHO]--------------------------------------------------------------.",
+    'footer':       "`------------------------------------------------------------[PY-WHO]---'",
+    'separator':    " -----------------------------------------------------------------------"
+}
+tls_mode = [
+    0, 'None',       # no ssl
+    1, 'Control',    # ssl on control
+    2, 'Both'        # ssl on control and data
+]
 
 try:
     glrootpath = config['DEFAULT']['glrootpath']
@@ -151,18 +157,16 @@ try:
     layout['header'] = config.get('THEME', 'header', fallback=default['header'])
     layout['footer'] = config.get('THEME', 'footer', fallback=default['footer'])
     layout['separator'] = config.get('THEME', 'separator', fallback=default['separator'])
-    tmpl_sub['logo'] = config.get('THEME', 'logo')
     tmpl_str['upload'] = config['THEME']['template_upload']
     tmpl_str['download'] = config['THEME']['template_download']
     tmpl_str['info'] = config['THEME']['template_info']
     tmpl_str['totals'] = config['THEME']['template_totals']
     tmpl_str['users'] = config['THEME']['template_users']
-    tmpl_sub['hr_char'] = config.get('THEME', 'hr_char', fallback=':')
+    tmpl_sub['hrchar'] = config.get('THEME', 'hrchar', fallback=':')
     tmpl_sub['delimiter'] = config.get('THEME', 'delimiter', fallback='|')
-    tmpl_sub['ccode'] = config.get('THEME', 'ccode', fallback='0;35')
-    emoji = config.getint('THEME', 'emoji', fallback=0)
-except KeyError as conf_err:
-    print(f'Check config file (error: {conf_err})')
+    emoji = config.getboolean('THEME', 'emoji', fallback=False)
+except (KeyError, configparser.InterpolationError) as conf_err:
+    print(f'ERROR: check config file\n{conf_err}')
     sys.exit(1)
 
 CHIDDEN = 1 if count_hidden else 0
@@ -178,10 +182,8 @@ KEY = int(IPC_KEY, 16)
 # NULL_CHAR = '\0'
 NULL_CHAR = b'\x00'
 if debug > 3:
-    print(
-        f"DEBUG: IPC_KEY={IPC_KEY} KEY={KEY} sysv_ipc.SHM_RDONLY={sysv_ipc.SHM_RDONLY} fmt =",
-        f'{KEY:#010x}', id(KEY)
-    )
+    print(f"DEBUG:\tIPC_KEY={IPC_KEY} KEY={KEY} sysv_ipc.SHM_RDONLY={sysv_ipc.SHM_RDONLY}\n",
+          f'\tfmt = {KEY:#010x}', id(KEY))
 
 # converted from structonline.h and arranged like struct_ONLINE below:
 # tag(64s) username(24s) status(h) ... procid(i)
@@ -238,10 +240,11 @@ if _WITH_GEOIP and geoip2_enable:
 # theme
 ########
 
-layout_keys = ['header', 'footer', 'separator']
-tmpl_string_keys = ['upload', 'download', 'info', 'totals', 'users']
-tmpl_sub_keys = ['delimiter', 'hr_char']
+mode_list = []
+layout_keys   = ['header', 'footer', 'separator']
+tmpl_str_keys = ['upload', 'download', 'info', 'totals', 'users']
 
+# try config keys 'header' and 'footer' etc first, fallback to header/footerfile
 for k in layout_keys:
     try:
         layout[k]
@@ -254,61 +257,81 @@ for k in layout_keys:
         except (KeyError, IOError) as t_err:
             print(f"File not found for theme '{k}' (error: {t_err})")
 
-# use unicode for spy and xxl mode and colors/emoji
+# for spy and xxl modes get and replace theme keys
 if _WITH_SPY and SPY_MODE:
-    tmpl_str_spy = {}
-    for k in tmpl_string_keys:
-        tmpl_str_spy[k] = config.get(
-            'SPYMODE', f'template_spy_{k}', fallback=config['THEME'][f'template_{k}']
-        ).encode().decode('unicode-escape')
-        tmpl_sub['ccode_spy'] = config.get(
-            'SPYMODE', 'ccode_spy', fallback='0;30;1'
-        )
-        tmpl_sub['ccode_spy_sep'] = config.get(
-            'SPYMODE', 'ccode_spy_sep', fallback='0;31'
-        )
-        tmpl_sub['ccode_spy_tot'] = config.get(
-            'SPYMODE', 'ccode_spy_tot', fallback='1;37'
-        )
-        tmpl_sub['ccode'] = tmpl_sub['ccode_spy']
-        layout['separator_spy'] = string.Template(
-            config['SPYMODE']['separator_spy']
-        ).substitute(tmpl_sub).encode().decode('unicode-escape')
-
+    mode_list.append('spy')
 if _WITH_XXL and XXL_MODE:
-    tmpl_str_xxl = {}
-    for k in tmpl_string_keys:
-        tmpl_str_xxl[k] = config.get(
-            'XXLMODE', f'template_xxl_{k}', fallback=config['THEME'][f'template_{k}'])
-    tmpl_sub['delimiter'] = config.get(
-        'XXLMODE', 'delimiter_xxl', fallback='|')
-
-if tmpl_sub['ccode'] or tmpl_sub['ccode_spy'] or emoji:
+    mode_list.append('xxl')
+for m in mode_list:
     for k in layout_keys:
-        layout[k] = string.Template(layout[k]).substitute(tmpl_sub).encode().decode('unicode-escape')
-    for k in tmpl_string_keys:
-        tmpl_str[k] = tmpl_str[k].encode().decode('unicode-escape')
-    for k in tmpl_sub_keys:
-        tmpl_sub[k] = string.Template(tmpl_sub[k]).substitute(tmpl_sub).encode().decode('unicode-escape')
+        layout[k] = config.get('THEME', f'{m}_{k}', fallback=default[k])
+    for k in tmpl_str_keys:
+        tmpl_str[k] = config.get('THEME', f'template_{m}_{k}', fallback=config['THEME'][f'template_{k}'])
 
-# strip colors from output if running from gl and '5' is not in FLAGS, or color=0, or xxl
-if ((tmpl_sub['ccode'] or tmpl_sub['ccode_spy']) and GL_NOCOLOR == 1) or color == 0 or XXL_MODE:
+# use unicode for layout and template keys to make sure we output ansi escapes
+for k in layout_keys:
+    layout[k] = layout[k].encode().decode('unicode-escape')
+for k in tmpl_str_keys:
+    tmpl_str[k] = tmpl_str[k].encode().decode('unicode-escape')
+
+# strip colors from output if running from gl and '5' is not in FLAGS, or color=0, or xxlmode
+if (not SPY_MODE and GL_NOCOLOR == 1) or color == 0 or XXL_MODE:
     re_esc = re.compile(r'(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]')
     for k in layout_keys:
         layout[k] = re_esc.sub('', layout[k])
-    for k in tmpl_sub_keys:
-        tmpl_sub[k] = re_esc.sub('', tmpl_sub[k])
-    if _WITH_SPY and SPY_MODE:
-        layout['separator_spy'] = re_esc.sub('', layout['separator_spy'])
+    for k in tmpl_str_keys:
+        tmpl_str[k] = re_esc.sub('', tmpl_str[k])
 
 
 # functions
 ############
 
+def cur(loc, n=0):
+    """return cursor control code """
+    return {
+        'H':    '\N{ESC}[H',
+        'A':    f'\N{ESC}[{n}A',
+        'C':    f'\N{ESC}[{n}C',
+        'F':    f'\N{ESC}[{n}F',
+        '0J':   '\N{ESC}[0J',
+        '2J':   '\N{ESC}[2J',
+    }[loc]
+
+
+def txt(mode):
+    """ return text mode or empty string if color is off """
+    if (not SPY_MODE and GL_NOCOLOR == 1) or color == 0 or XXL_MODE:
+        return ''
+    textmode = {
+        'r':    '\x1b[0m',
+        'b':    '\x1b[1m',
+        'u':    '\x1b[4m',
+        'bl':   '\x1b[5m',
+        'rb':   '\x1b[22m',
+    }
+    return textmode[mode]
+
+
+def col(fg, bg):
+    """ return color code or empty string if color is off """
+    if (not SPY_MODE and GL_NOCOLOR == 1) or color == 0 or XXL_MODE:
+        return ''
+    colnum = {
+        'k':    0,
+        'r':    1,
+        'g':    2,
+        'y':    3,
+        'b':    4,
+        'm':    5,
+        'c':    6,
+        'w':    7,
+        'd':    9        
+    }
+    return f'\x1b[1;{colnum[fg]+30};{colnum[bg]+40}m'
+
+
 def glconf_users():
-    """
-    sum max_users from glftpd.conf
-    """
+    """ sum max_users from glftpd.conf """
     u_cnt = 0
     for cfg_fname in [f'{glrootpath}/../glftpd.conf', f'{glrootpath}/glftpd.conf', '/etc/glftpd.conf']:
         try:
@@ -322,22 +345,19 @@ def glconf_users():
             pass
     return u_cnt
 
+
 def get_group(gid):
-    """
-    get group name using gid
-    """
+    """ get group name using gid """
     line = None
-    g_name = "NoGroup"
     for line in groupfile:
         if line.split(':')[2] == str(gid):
             g_name = line.split(':')[0]
             return g_name
+    return None
 
 
 def get_gid(g_name):
-    """
-    get gid using group name
-    """
+    """ get gid using group name """
     line = None
     gid = 0
     for line in groupfile:
@@ -348,9 +368,7 @@ def get_gid(g_name):
 
 
 def filesize(filename):
-    """
-    get filesize in bytes
-    """
+    """ get filesize in bytes """
     for file in filename, f'{glrootpath}{filename}':
         try:
             return os.path.getsize(file)
@@ -359,12 +377,65 @@ def filesize(filename):
     return 0
 
 
-# pylint: disable=invalid-name
-def showusers(mode, ucomp, raw, iteration, user, x, chidden, downloads, uploads,
-              total_up_speed, total_dn_speed, browsers, idlers, onlineusers, geoip2_client, geoip2_shown_err):
-    """
-    output formatted user stats
-    """
+def cprint(message):
+    """ format max columns """
+    print("{msg:<{col}.{col}}".format(
+        msg=message, col=os.get_terminal_size().columns)
+    )
+
+
+def get_geocode(client, userip, shown_err):
+    """ get geoip2 country code for ip """
+    iso_code = "xX"
+    if debug > 0:
+        for _ in ['127.', '10.', '172.16.1', '172.16.2', '172.16.3', '192.168.']:
+            if userip.startswith(_):
+                if debug > 3:
+                    print(f'DEBUG: geoip2 MATCH {_} in {userip}')
+                return [ client, 'DEBUG', shown_err ]
+    if GEOIP2_BUF.get(userip):
+        iso_code = GEOIP2_BUF[userip]
+    else:
+        try:
+            if debug == 1:
+                print('DEBUG: got cached GEOIP2_BUF[userip]', GEOIP2_BUF[userip])
+            iso_code = client.country(userip).country.iso_code
+            GEOIP2_BUF[userip] = iso_code
+        except geoip2.errors.GeoIP2Error as g_err:
+            # var shown_err makes sure we only show the error once
+            if (g_err.__class__.__name__ in ['AddressNotFoundError', 'reqOutOfQueriesError']) and shown_err == 0:
+                shown_err = 1
+                _m = f'Error: geoip2 {g_err.__class__.__name__} ({g_err})'
+                if _WITH_SPY and SPY_MODE:
+                    print("\n{msg:<80}\n".format(msg=_m))
+                    time.sleep(2.5)
+                    print(f"{cur('F',3)}{cur('0J')}{cur('F',1)}")
+                elif _WITH_XXL and XXL_MODE:
+                    print(_m, '\n')
+                else:
+                    print('\n'.join(_.strip() for _ in re.findall(r'.{1,75}(?:\s+|$)', _m)))
+    return [ client, iso_code, shown_err ]
+
+
+def showusers(user, *args, **kwargs):
+    """ output formatted user stats """
+    # set variables from function parameters
+    mode = args[0]
+    ucomp = args[1]
+    raw = args[2]
+    rep = args[3]
+    x = args[4]
+    chidden = args[5]
+    downloads = kwargs['downloads']
+    uploads = kwargs['downloads']
+    total_up_speed = kwargs['total_up_speed']
+    total_dn_speed = kwargs['total_dn_speed']
+    browsers = kwargs['total_dn_speed']
+    idlers = kwargs['idlers']
+    onlineusers = kwargs['onlineusers']
+    geoip2_client = kwargs['geoip2_client']
+    geoip2_shown_err = kwargs['geoip2_shown_err']
+
     # NOTE:
     #   to test total up/dn speed set vars like this:
     #     uploads, downloads, total_up_speed, total_dn_speed = 10, 3, 18576, 8576   # 1048576 (1024*1024)
@@ -376,6 +447,7 @@ def showusers(mode, ucomp, raw, iteration, user, x, chidden, downloads, uploads,
     #     b'PASV'
     #     b'Connecting...'
     # (OLD) glftpd 2.11: username = user[x].username.decode().split(NULL_CHAR, 1)[0]
+
     username = user[x].username.split(NULL_CHAR, 1)[0].decode()
     tagline = user[x].tagline.split(NULL_CHAR, 1)[0].decode()
     currentdir = user[x].currentdir.split(NULL_CHAR, 1)[0].decode()
@@ -386,9 +458,8 @@ def showusers(mode, ucomp, raw, iteration, user, x, chidden, downloads, uploads,
     host = g_name = traf_dir = None
     speed = pct = mask = noshow = 0
     maskchar = " "
-    pbar = ""
+    p_bar = ""
     userip = '0.0.0.0'
-    iso_code = "xX"
 
     # skip if host is empty
     if user[x].host != b'':
@@ -431,46 +502,7 @@ def showusers(mode, ucomp, raw, iteration, user, x, chidden, downloads, uploads,
                 mask += 1
 
     if _WITH_GEOIP and geoip2_enable:
-        if debug == 0:
-            if GEOIP2_BUF.get(userip):
-                iso_code = GEOIP2_BUF[userip]
-            else:
-                try:
-                    iso_code = geoip2_client.country(userip).country.iso_code
-                    GEOIP2_BUF[userip] = iso_code
-                except geoip2.errors.GeoIP2Error as g_err:
-                    if (g_err.__class__.__name__ in ['AddressNotFoundError', 'reqOutOfQueriesError']) and geoip2_shown_err == 0:
-                        geoip2_shown_err = 1
-                        print("\n{message:<80}\n".format(
-                            message=f'Error: geoip2 {g_err.__class__.__name__} ({g_err})')
-                        )
-                        time.sleep(2.5)
-                        print('\N{ESC}[3F')
-                        print('\N{ESC}[0J')
-                        print('\N{ESC}[3F')
-                    else:
-                        pass
-        else:
-            # when debugging dont pass exception, skip rfc1918 ip's
-            j = 0
-            for ipaddr in ['127.', '10.', '172.16.1', '172.16.2', '172.16.3', '192.168.']:
-                if userip.startswith(ipaddr):
-                    j += 1
-                    if debug > 3:
-                        print(f'DEBUG: geoip2 MATCH = {ipaddr} in {userip}')
-                    break
-            if j == 0:
-                if GEOIP2_BUF.get(userip):
-                    print(
-                        f'DEBUG: cache GEOIP2_BUF[userip]={GEOIP2_BUF[userip]}')
-                    iso_code = GEOIP2_BUF[userip]
-                else:
-                    try:
-                        iso_code = geoip2_client.country(userip).country.iso_code
-                        GEOIP2_BUF[userip] = iso_code
-                    except geoip2.errors.GeoIP2Error as g_err:
-                        print("{message:<80}".format(message=f'Error: geoip2 {g_err.__class__.__name__} {g_err}'))
-
+        (geoip2_client, iso_code, geoip2_shown_err) = get_geocode(geoip2_client, userip, geoip2_shown_err)
         userip = f'{userip} {iso_code}' if (userip and iso_code) else userip
 
     # NOTE: when testing bytes_xfer1, use replace since namedtuple is immutable:
@@ -480,14 +512,16 @@ def showusers(mode, ucomp, raw, iteration, user, x, chidden, downloads, uploads,
     if (user[x].status[:5] == b'STOR ' or user[x].status[:5] == b'APPE ') and user[x].bytes_xfer1:
         mb_xfered = abs(user[x].bytes_xfer1 / 1024 / 1024)
         traf_dir = "Up"
-        speed = abs(user[x].bytes_xfer1 / 1024 / ((tstop_tv_sec - user[x].tstart_tv_sec) +
-                    (tstop_tv_usec - user[x].tstart_tv_usec) / 1000000))
-        if ((not noshow and not mask and maskchar != '*') or chidden):
+        speed = abs(
+            user[x].bytes_xfer1 / 1024 / ((tstop_tv_sec - user[x].tstart_tv_sec) +
+            (tstop_tv_usec - user[x].tstart_tv_usec) / 1000000)
+        )
+        if (not noshow and not mask and maskchar != '*') or chidden:
             total_up_speed += speed
             uploads += 1
         if not mask:
             pct = -1
-            pbar = '?->'
+            p_bar = '?->'
     # dn speed
     elif user[x].status[:5] == b'RETR ' and user[x].bytes_xfer1:
         mb_xfered = 0
@@ -496,20 +530,24 @@ def showusers(mode, ucomp, raw, iteration, user, x, chidden, downloads, uploads,
         my_filesize = filesize(realfile)
         if my_filesize < user[x].bytes_xfer1:
             my_filesize = user[x].bytes_xfer1
-        pct = abs(user[x].bytes_xfer1 / my_filesize * 100)
+        pct = abs(
+            user[x].bytes_xfer1 / my_filesize * 100
+        )
         i = 15 * user[x].bytes_xfer1 / my_filesize
         i = 15 if 1 > 15 else i
-        # for _ in range(0, int(i)): pbar += 'x'
+        # for _ in range(0, int(i)): p_bar += 'x'
         # x = 'x' * len(range(0, int(i)))
-        pbar = f"{'':x<{int(abs(i))}}"
-        speed = abs(user[x].bytes_xfer1 / 1024 / ((tstop_tv_sec - user[x].tstart_tv_sec) +
-                    (tstop_tv_usec - user[x].tstart_tv_usec) / 1000000))
-        if ((not noshow and not mask and maskchar != '*') or chidden):
+        p_bar = f"{'':x<{int(abs(i))}}"
+        speed = abs(
+            user[x].bytes_xfer1 / 1024 / ((tstop_tv_sec - user[x].tstart_tv_sec) +
+            (tstop_tv_usec - user[x].tstart_tv_usec) / 1000000)
+        )
+        if (not noshow and not mask and maskchar != '*') or chidden:
             total_dn_speed += speed
             downloads += 1
     # idle time
     else:
-        pbar = filename = ""
+        p_bar = filename = ""
         pct = mb_xfered = 0
         seconds = tstop_tv_sec - user[x].tstart_tv_sec
         if ((not noshow and not mask and maskchar != '*') and chidden):
@@ -529,8 +567,8 @@ def showusers(mode, ucomp, raw, iteration, user, x, chidden, downloads, uploads,
     # format both Up/Dn speed to KB/s MB/s GB/s
     if speed and (traf_dir == "Up" or traf_dir == "Dn"):
         if not mask and not raw:
+            # filename = '{:<.{prec}}'.format(filename, prec=int(m))
             if len(filename) > 15:
-                # filename = '{:<.{prec}}'.format(filename, prec=int(m))
                 filename = f'{filename:<.15}'
             if speed > (threshold * threshold):
                 status = '{}: {:7.2f}GB/s'.format(traf_dir, (speed / 1024 / 1024))
@@ -544,31 +582,30 @@ def showusers(mode, ucomp, raw, iteration, user, x, chidden, downloads, uploads,
             status = '{}ld| {:.0f}'.format(traf_dir.lower(), speed)
 
     if debug > 0:
-        print(
-            f'DEBUG: showusers mode={mode} ucomp={ucomp} raw={raw} iteration={iteration} \
-            username={username} x={x} hidden={chidden} showall={SHOWALL} \
-            noshow={noshow} mask={mask} maskchar={maskchar}'
-        )
+        print(f'DEBUG: showusers mode={mode} ucomp={ucomp} raw={raw} rep={rep}',
+              f'username={username} x={x} hidden={chidden} showall={SHOWALL}'
+              f'noshow={noshow} mask={mask} maskchar={maskchar}' )
 
     # show stats of users
     if mode == 0 and raw != 3:
-        if (raw == 0 and (SHOWALL or (not noshow and not mask and maskchar != '*'))):
+        if raw == 0 and (SHOWALL or (not noshow and not mask and maskchar != '*')):
             if mb_xfered:
                 print(string.Template(tmpl_str['upload']).substitute(tmpl_sub).format(
-                    maskchar=maskchar, username=username, g_name=g_name, status=status, mb_xfered=mb_xfered))
+                    maskchar=maskchar, username=username, g_name=g_name, status=status, mb_xfered=mb_xfered
+                ))
             else:
                 print(string.Template(tmpl_str['download']).substitute(tmpl_sub).format(
-                    maskchar=maskchar, username=username, g_name=g_name, status=status, pct=pct, bar=pbar))
+                    maskchar=maskchar, username=username, g_name=g_name, status=status, pct=pct, bar=p_bar
+                ))
             print(string.Template(tmpl_str['info']).substitute(tmpl_sub).format(
-                tagline=tagline, userip=userip if userip != '0.0.0.0' else addr,  online=online, filename=filename)
-            )
+                tagline=tagline, userip=userip if userip != '0.0.0.0' else addr,  online=online, filename=filename
+            ))
             print(layout['separator'])
         elif (raw == 1 and (SHOWALL or (not noshow and not mask and maskchar != '*'))):
             print('"USER" "{username}" "{g_name}" "{status}" "{tagline}" "{online}" "{filename}" "{mb_xfered}" "{currentdir}" "{procid}" "{host}" "{iso_code}" "{userip}"'.format(
-                    username=username, g_name=g_name, status=status, tagline=tagline, online=online, filename=filename,
-                    mb_xfered=mb_xfered, currentdir=currentdir, procid=user[x].procid, host=host, iso_code=iso_code, userip=userip
-                )
-            )
+                username=username, g_name=g_name, status=status, tagline=tagline, online=online, filename=filename,
+                mb_xfered=mb_xfered, currentdir=currentdir, procid=user[x].procid, host=host, iso_code=iso_code, userip=userip
+            ))
         elif (SHOWALL or (not noshow and not mask and maskchar != '*')):
             print("{}|{}|{}|{}|{}".format(username, g_name, tagline, status, filename))
         if (not noshow and not mask and maskchar != '*') or chidden:
@@ -579,7 +616,7 @@ def showusers(mode, ucomp, raw, iteration, user, x, chidden, downloads, uploads,
     # show stats for username, if specified as command-line argument
     elif ((ucomp and username) and (ucomp == username)) and (not XXL_MODE):
         if _WITH_ALTWHO:
-            if (not raw and (SHOWALL or (not noshow and not mask and maskchar != '*'))):
+            if not raw and (SHOWALL or (not noshow and not mask and maskchar != '*')):
                 if mb_xfered:
                     print("{} : {:1}{}/{} has xfered {:.1f}MB of {} and has been online for {:8.8}.".format(
                         status, maskchar, username, g_name, mb_xfered, filename, online
@@ -592,111 +629,104 @@ def showusers(mode, ucomp, raw, iteration, user, x, chidden, downloads, uploads,
                     print("{} : {:1}{}/{} has been online for {:8.8s}.".format(
                         status,maskchar, username, g_name, online
                     ))
-            elif (raw == 1 and (SHOWALL or (not noshow and not mask and (maskchar != '*')))):
+            elif raw == 1 and (SHOWALL or (not noshow and not mask and (maskchar != '*'))):
                 print("\"USER\" \"{:1}\" \"{}\" \"{}\" {} \"{}\" \"{}\" \"{}\" \"{:.1f}{}\" \"{}\" \"{}\" \"{}\" \"{}\" \"{}\"".format(
                     maskchar, username, g_name, status, tagline, online, filename,
                     (pct if pct >= 0 else mb_xfered), ("%" if pct >= 0 else "MB"),
                     currentdir, user[x].procid, host, iso_code, userip
                 ))
-            elif (SHOWALL or (not noshow and not mask and (maskchar != '*'))):
+            elif SHOWALL or (not noshow and not mask and (maskchar != '*')):
                 print("{}|{}|{}|{}|{}".format(username, g_name, tagline, status, filename))
         else:
             if not onlineusers:
-                if (not raw and (SHOWALL or (not noshow and not mask and maskchar != '*'))):
+                if not raw and (SHOWALL or (not noshow and not mask and maskchar != '*')):
                     print("\002{}\002 - {}".format(username, status))
-                elif (raw == 1 and (SHOWALL or (not noshow and not mask and maskchar != '*'))):
+                elif raw == 1 and (SHOWALL or (not noshow and not mask and maskchar != '*')):
                     print("\"USER\" \"{}\" {}".format(username, status))
-                elif (SHOWALL or (not noshow and not mask and maskchar != '*')):
+                elif  SHOWALL or (not noshow and not mask and maskchar != '*'):
                     print("\002{}\002 - {}".format(username, status))
             else:
-                if (not raw and (SHOWALL or (not noshow and not mask and maskchar != '*'))):
+                if not raw and (SHOWALL or (not noshow and not mask and maskchar != '*')):
                     print(" - {}".format(status))
-                elif (raw == 1 and (SHOWALL or (not noshow and not mask and maskchar == '*'))):
+                elif raw == 1 and (SHOWALL or (not noshow and not mask and maskchar == '*')):
                     print("\"USER\" \"\" {}".format(status))
-                elif (SHOWALL and (not noshow and not mask and maskchar != '*')):
+                elif SHOWALL and (not noshow and not mask and maskchar != '*'):
                     print(" - {}".format(status))
-        if (not noshow and not mask and maskchar != '*'):
-            onlineusers += 1
-        elif chidden:
+        if (not noshow and not mask and maskchar != '*') or chidden:
             onlineusers += 1
         filename = ""
 
     # xxl_mode: wide output, use columns from terminal size as width
     elif _WITH_XXL and XXL_MODE:
         upload = download = info = ''
-        columns = os.get_terminal_size().columns
-        if pbar:
-            pad = '{:{fill}{align}{width}}'.format(
-                '', fill='.', align='<', width=(15-abs(len(pbar)))
-            )
-            pbar = f'{pbar}{pad}'
+        if p_bar:
+            # add padding
+            p_bar += '{:.<{width}}'.format('', width=(15-abs(len(p_bar))))
         else:
-            pbar = '-'
+            p_bar = '-'
         filename = filename if filename else '---'
         if mb_xfered:
-            upload = string.Template(tmpl_str_xxl['upload']).substitute(tmpl_sub).format(
+            upload = string.Template(tmpl_str['upload']).substitute(tmpl_sub).format(
                 username=username, g_name=g_name, tagline=tagline, status=status, mb_xfered=mb_xfered
             )
-            print("{message:<{col}.{col}}".format(col=columns, message=upload))
+            cprint(upload)
         else:
-            download = string.Template(tmpl_str_xxl['download']).substitute(tmpl_sub).format(
-                username=username, g_name=g_name, tagline=tagline, status=status.replace('  ', ' ').upper(), pct=pct, bar=pbar
+            download = string.Template(tmpl_str['download']).substitute(tmpl_sub).format(
+                username=username, g_name=g_name, tagline=tagline, status=status.replace('  ', ' ').upper(), pct=pct, bar=p_bar
             )
-            print("{message:<{col}.{col}}".format(col=columns, message=download))
-        info = string.Template(tmpl_str_xxl['info']).substitute(tmpl_sub).format(
-            userip=userip if userip != '0.0.0.0' else addr, online=online, filename=filename
+            cprint(download)
+        info = string.Template(tmpl_str['info']).substitute(tmpl_sub).format(
+                userip=userip if userip != '0.0.0.0' else addr, online=online, filename=filename
         )
-        print("{message:<{col}.{col}}".format(col=columns, message=info))
-        # separator:        print("{message:<{col}.{col}}".format(col=columns, message=layout['separator']))
+        cprint(info)
+        # separator:        cprint(layout['separator'])
         # sep w/ calc len:  msg_len = max(len(upload), len(download), len(info))
-        #                   print("{message:<{col}.{col}}".format(col = min((msg_len+1)*2, columns), message=layout['separator'] * msg_len))
+        #                   print("{_m:<{col}.{col}}".format(col = min((msg_len+1)*2, columns), _m=layout['separator'] * msg_len))
         print()
         onlineusers += 1
 
     # spymode: try to show as much useful info as possible..
     elif _WITH_SPY and SPY_MODE:
-        # show pct/bar or currentdir on right side
-        if not pct and not pbar:
+        # show pct/progessbar or currentdir on right side
+        if not pct and not p_bar:
             pct_spy = ''
         else:
             pct_spy = f"{pct:>4.0f}%:"
-        if pbar:
-            if pbar == '?->':
-                pbar_spy = f"{user[x].status.split(NULL_CHAR, 1)[0].decode()[5:]:<22.22}" if (len(status) > 5) else f"{' ':<22.22}"
+        if p_bar:
+            if p_bar == '?->':
+                p_bar_spy = f"{u_status[5:]:<22.22}" if (len(status) > 5) else f"{' ':<22.22}"
             else:
-                pbar_spy = f'{pbar:<16.16s}'
+                p_bar_spy = f'{p_bar:<16.16s}'
         else:
-            # show '-' to confirm (big) file is in progress
+            # show '-' to confirm (large) file is started
             if pct > 0:
-                pbar_spy = f"{'-':<16.16s}"
-            if not pct:
-                pbar_spy = f"{currentdir.replace('/site', ''):<22.22}"
-        info_spy = f'{pct_spy} {pbar_spy}'
+                p_bar_spy = f"{'-':<16.16s}"
+            else:
+                p_bar_spy = f"{currentdir.replace('/site', ''):<22.22}"
+        info_spy = f'{pct_spy} {p_bar_spy}'
         if mb_xfered:
-            print(string.Template(tmpl_str_spy['upload']).substitute(tmpl_sub).format(
+            print(string.Template(tmpl_str['upload']).substitute(tmpl_sub).format(
                 username=username, g_name=g_name, status=status, mb_xfered=mb_xfered
             ))
         else:
-            print(string.Template(tmpl_str_spy['download']).substitute(tmpl_sub).format(
+            print(string.Template(tmpl_str['download']).substitute(tmpl_sub).format(
                 username=username, g_name=g_name, status=status, info_spy=info_spy
             ))
         # right side: switch between showing filename or status
         if (u_status[:5] in ['RETR ', 'STOR ']):
             fn_spy = f'file: {filename}'
-        elif (u_status[:5] in ['LIST ', 'STAT ', 'SITE ']):
-            fn_spy = u_status
-        elif u_status[5:].startswith('-') or (u_status == 'Connecting...'):
+        elif (u_status[:5] in ['LIST ', 'STAT ', 'SITE ']) or (u_status == 'Connecting...') or (u_status[5:].startswith('-')):
             fn_spy = u_status
         else:
             fn_spy = filename
         # left side: show ip or tagline
-        if iteration % 8 in range(0, 5):
-            print(string.Template(tmpl_str_spy['info']).substitute(tmpl_sub).format(info="{:8.8s} {:>18.18s}".format(
+        if rep % 8 in range(0, 5):
+            print(string.Template(tmpl_str['info']).substitute(tmpl_sub).format(info="{:8.8s} {:>18.18s}".format(
                 tagline, userip if userip != '0.0.0.0' else addr), online=online, fn_spy=fn_spy
             ))
         else:
-            print(string.Template(tmpl_str_spy['info']).substitute(tmpl_sub).format(info=tagline, online=online, fn_spy=fn_spy))
-        print(string.Template(layout['separator_spy']).substitute(tmpl_sub).format('', x=x))
+            print(string.Template(tmpl_str['info']).substitute(tmpl_sub).format(info=tagline, online=online, fn_spy=fn_spy))
+        print(layout['separator'].format('', x=x))
         onlineusers += 1
 
     return dict(
@@ -705,11 +735,18 @@ def showusers(mode, ucomp, raw, iteration, user, x, chidden, downloads, uploads,
     )
 
 
-def showtotals(raw, totalusers, downloads, uploads, total_up_speed, total_dn_speed, browsers, idlers, onlineusers, geoip2_client, geoip2_shown_err):
-    # pylint: disable=unused-argument
-    """
-    output formatted totals
-    """
+def showtotals(*args, **kwargs):
+    """ output formatted totals """
+    # set variables from function parameters
+    raw = args[0]
+    totalusers = args[1]
+    downloads = kwargs['downloads']
+    uploads = kwargs['uploads']
+    total_up_speed = kwargs['total_up_speed']
+    total_dn_speed = kwargs['total_dn_speed']
+    browsers = kwargs['browsers']
+    idlers = kwargs['idlers']
+    onlineusers = kwargs['onlineusers']
     if (total_up_speed > (threshold*threshold)) or (total_dn_speed > (threshold*threshold)):
         total_up_speed = (total_up_speed / 1024 / 1024)
         total_dn_speed = (total_dn_speed / 1024 / 1024)
@@ -721,32 +758,31 @@ def showtotals(raw, totalusers, downloads, uploads, total_up_speed, total_dn_spe
     else:
         speed_unit = 'KB/s'
     if not raw:
-        if _WITH_SPY and SPY_MODE:
-            print(string.Template(tmpl_str_spy['totals']).substitute(tmpl_sub).format(
+        # if _WITH_SPY and SPY_MODE:
+        #    print(string.Template(tmpl_str['totals']).substitute(tmpl_sub).format(
+        #        uploads=uploads, total_up_speed=total_up_speed, downloads=downloads, total_dn_speed=total_dn_speed,
+        #        total=uploads + downloads, total_speed=total_up_speed + total_dn_speed, unit=speed_unit
+        #    ))
+        #    print(string.Template(tmpl_str['users']).substitute(tmpl_sub).format(
+        #        space=' ', onlineusers=onlineusers, maxusers=totalusers)
+        #    )
+        if _WITH_XXL and XXL_MODE:
+            totals = string.Template(tmpl_str['totals']).substitute(tmpl_sub).format(
                 uploads=uploads, total_up_speed=total_up_speed, downloads=downloads, total_dn_speed=total_dn_speed,
                 total=uploads + downloads, total_speed=total_up_speed + total_dn_speed, unit=speed_unit
-            ))
-            print(string.Template(tmpl_str_spy['users']).substitute(tmpl_sub).format(
-                space=' ', onlineusers=onlineusers, maxusers=totalusers)
             )
-        elif _WITH_XXL and XXL_MODE:
-            totals = string.Template(tmpl_str_xxl['totals']).substitute(tmpl_sub).format(
-                uploads=uploads, total_up_speed=total_up_speed, downloads=downloads, total_dn_speed=total_dn_speed,
-                total=uploads + downloads, total_speed=total_up_speed + total_dn_speed, unit=speed_unit
+            users = string.Template(tmpl_str['users']).substitute(tmpl_sub).format(
+                onlineusers=onlineusers, maxusers=totalusers
             )
-            users = string.Template(tmpl_str_xxl['users']).substitute(tmpl_sub).format(
-                space=' ', onlineusers=onlineusers, maxusers=totalusers
-            )
-            print("{message:<{col}.{col}}".format(
-                col=os.get_terminal_size().columns, message=f'{totals} {users}')
-            )
+            cprint(f'{totals} {users}')
         else:
             print(string.Template(tmpl_str['totals']).substitute(tmpl_sub).format(
                 uploads=uploads, total_up_speed=total_up_speed, downloads=downloads, total_dn_speed=total_dn_speed,
                 total=uploads + downloads, total_speed=total_up_speed + total_dn_speed, unit=speed_unit
             ))
             print(string.Template(tmpl_str['users']).substitute(tmpl_sub).format(
-                space=' ', onlineusers=onlineusers, maxusers=totalusers))
+                space=' ', onlineusers=onlineusers, maxusers=totalusers)
+            )
     elif raw == 1:
         print('"STATS" "{uploads}" "{total_up_speed:.1f}" "{downloads}" "{total_dn_speed:.1f}" "{total}" "{total_speed:.1f}"'.format(
             uploads=uploads, total_up_speed=total_up_speed,
@@ -763,77 +799,152 @@ def showtotals(raw, totalusers, downloads, uploads, total_up_speed, total_dn_spe
 
 def spy_break(signal_received, frame):
     # pylint: disable=unused-argument
-    """
-    handle ctrl-c break
-    """
+    """ handle ctrl-c break """
+    os.system("stty sane")    
     print(f'\n{"Exiting py-who spy mode...":<80}\n')
     if _WITH_GEOIP and geoip2_enable:
         GEOIP2_CLIENT.close()
     sys.exit(0)
 
-
-def spy_user_wait(mode, msg):
-    """
-    mode 0: show progress meter, e.g. [ xxxxxxx... ]
-    mode 1: wait for user to press ENTER
-    """
-    i = 0
-    while True:
-        get_input = select.select([sys.stdin], [], [], 0.5)[0]
-        if get_input:
-            print('\N{ESC}[0J')
-            break
-        if mode == 0:
-            pad = '.' * (10-i)
-            if i > 10:
-                break
-        elif mode == 1:
-            pad = ' ' * (3-i)
-            if i > 3:
-                i = 0
-        progress = '{:{fill}{align}{width}}'.format(
-            '', fill = 'x' if mode == 0 else '.', align='<', width=int(i)
-        )
-        output = '{} [ {}{} ]' if mode == 0 else '{}{}{}'
-        print(output.format(msg, progress, pad, end=""))
-        print('\N{ESC}[2F')
-        i += 1
-
+# TODO: add 'h' help popup instead of the lines at bottom?
+#       add 'v' to view first user
+#       add popup prompts? e.g. 'k':  [ Kill user: ____ ]
+#       or move 'k' to userinfo? 'k' = kick selected user
 
 def spy_usage(u_idx):
-    """
-    show usage text and prompt for user input
-    """
+    """ show usage text and user input prompt """
+    u_range = '<num>'
     if u_idx == 1:
         u_range = '0'
     elif u_idx > 1:
         u_range = f'0-{u_idx-1}'
+    print("> To view user info use '{ur}' or 'k <num>' to kick a user (needs root)\n"
+          "> To quit press 'q' (or {b}CTRL-C{rb}) ... "
+          "Type [{kw}{ur}{r} or {kw}k {ur}{r} or {kw}q{r}] then {kw}ENTER{r}:".format(
+            ur=u_range, b=f"{txt('b')}", rb=f"{txt('rb')}", r=f"{txt('r')}", kw=f"{col('k','w')}"
+    ))
+    print(f"{col('k','w')}{txt('bl')}__{txt('r')}{col('k','w')}_{txt('r')}", end="")
+    print(f"{cur('A',1)}{cur('C',3)}")
+    
+    
+def userinfo(userfile, user, stdin_string):
+    """ show user details """
+    print(layout['header'])
+    i = 0
+    while i < len(user):
+        if user[i].username == user[int(stdin_string)].username:
+            u_next = i + 1 if (i+1) < len(user) else 0
+            u_prev = i - 1 if (i-1) < len(user) else 0
+            tls_msg = tls_mode[user[i].ssl_flag] if user[i].ssl_flag in range(0, len(tls_mode)) else 'UNKNOWN'
+            print(f"  {txt('u')}LOGIN{txt('r')} [#{i}]:")
+            print(f"    Username: '{txt('b')}{user[i].username.split(NULL_CHAR, 1)[0].decode()}{txt('r')}'")
+            print(f'    PID: {user[i].procid}  SSL: {tls_msg}')
+            print(f'    RHost: {user[i].host.split(NULL_CHAR, 1)[0].decode()}')
+            print(f'    Tagline: {user[i].tagline.split(NULL_CHAR, 1)[0].decode()}')
+            print(f'    Currentdir: {user[i].currentdir.split(NULL_CHAR, 1)[0].decode()}')
+            print(f'    Status: {user[i].status.split(NULL_CHAR, 1)[0].decode()}')
+        i += 1
+    if color == 0:
+        print(default['separator'])
     else:
-        u_range = '<num>'
-    print(f"> To view user info press '{u_range}' or to kick use 'k <num>' (needs root)")
-    print(f"> To quit press 'q' or 'CTRL-C' ... Type [{u_range},k,q] <ENTER> :")
-    print(" ___", end="")
-    print('\N{ESC}[2A')
-    print('\N{ESC}[1C')
+        print("{mcolor}{separator}{r}".format(
+            mcolor=config.get('THEME', 'spy_mcolor'), separator=default['separator'], r=txt('r')
+        ).encode().decode('unicode-escape'))
+    print(f"  {txt('u')}USERFILE{txt('r')}:")
+    for line in userfile:
+        for field in ['FLAGS', 'CREDITS', 'IP']:
+            if field in line:
+                if line.startswith('CREDITS'):
+                    c = re.sub(r'^CREDITS ([^0]\d+).*', r'\1', line)
+                    print("{:>4.4}CREDITS: {} GB\n".format(' ', round(int(c)/1024**2)), end="")
+                else:
+                        print(f"{' ':>4.4}{line.strip()}")
+    print(layout['footer'])
+    return u_next, u_prev
 
 
-def spy_input_action(user, u_idx, user_action, screen_redraw):
-    """
-    get user input and run action after ENTER
-    """
-    user_pid = 0
-    orig_fl = fcntl.fcntl(sys.stdin, fcntl.F_GETFL)
-    fcntl.fcntl(sys.stdin, fcntl.F_SETFL, orig_fl | os.O_NONBLOCK)
-    stdin_string = sys.stdin.read(5)
+def get_key(user, u_idx, user_action, screen_redraw, **kwargs):
+    #print(f'DEBUG: get_key user_action={user_action}')
+    #time.sleep(2)
+    tty.setcbreak(sys.stdin.fileno())
+    if select.select([sys.stdin], [], [], 0.5) == ([sys.stdin], [], []):
+        k = sys.stdin.read(1)
+        un = None
+        up = None
+        print(f'DEBUG: get_key k={k}')
+        #time.sleep(1)
+        if k in ['q', 'q']:
+            user_action = 0
+            screen_redraw =  0
+            os.system("stty sane")
+        elif k in ['n', 'N']:                
+            user_action = 1
+            screen_redraw =  1
+            un = kwargs.get('u_next')
+        elif k in ['p', 'P']:
+            user_action = 1
+            screen_redraw =  1
+            up = kwargs.get('u_prev')
+        elif k in ['h', 'H']:
+            user_action = 3
+            screen_redraw =  0
+        # TODO: quit on ESC on first screen or back to main from userinfo
+        elif k == '\N{ESC}' and user_action == 0:
+            os.system("stty sane")
+            user_action = 0
+            screen_redraw = 0            
+        elif k == '\N{ESC}':
+            return True
+        elif k and user_action == 3:
+            return True
+
+        # TODO: make sure we always call stty sane before exit
+        #os.system("stty sane")
+        #break
+        spy_input_action(user, u_idx, user_action, screen_redraw, key=k, u_next=un, u_prev=up)
+
+
+# TODO: complex function, refactor?
+def spy_input_action(user, u_idx, user_action, screen_redraw, **kwargs):
+    """ get user input and run action after ENTER """
+
+    stdin_string = ""
+    u_next = ""
+    u_prev = ""
+
+    print('DEBUG: spy_input_action kwargs', kwargs)
+    if kwargs:
+        if (type(kwargs.get('u_next')) == int):
+            u_next = str(kwargs['u_next'])
+            stdin_string = u_next
+        elif (type(kwargs.get('u_prev')) == int):
+            u_prev = str(kwargs['u_prev'])
+            stdin_string = u_prev
+        else:
+            stdin_string = kwargs.get('key')        
+    #else:
+    #    orig_fl = fcntl.fcntl(sys.stdin, fcntl.F_GETFL)
+    #    fcntl.fcntl(sys.stdin, fcntl.F_SETFL, orig_fl | os.O_NONBLOCK)
+    #    stdin_string = sys.stdin.read(5)
+        
+    get_key(user, u_idx, user_action, screen_redraw)
+    print(f'DEBUG: spy_input_action stdin_string={stdin_string} u_next={u_next} u_prev={u_prev}')
+
+    # TODO: add ESC to quit
+    #       fix wrong key response 'User not found or invalid option ...' (first time)
+    #       slow reponse to key (sleep)
+
     # action: quit
     if stdin_string.rstrip() in ['q', 'Q']:
-        print(f'{" ":<80}')
-        print(f'{"Exiting py-who spy mode...":<80}', end="")
-        print('\n')
+        os.system("stty sane")
+        print(f'{" ":<80}\n{"Exiting py-who spy mode...":<80}\n')
         sys.exit(0)
+
     # action: userinfo
-    if stdin_string[:2].strip().isdigit() and int(stdin_string[:2].strip()) in range(0, u_idx):
+    if (stdin_string[:2].strip().isdigit() and int(stdin_string[:2].strip()) in range(0, u_idx)):
         user_action = 1
+        #stdin_string = str(u_next) if u_next else stdin_string
+        print('DEBUG: userinfo ', user_action, stdin_string)
         u_name = user[int(stdin_string.strip())].username.split(NULL_CHAR, 1)[0].decode()
         try:
             with open(f'{glrootpath}/ftp-data/users/{u_name}', 'r', encoding='utf-8', errors='ignore') as ufile:
@@ -847,36 +958,32 @@ def spy_input_action(user, u_idx, user_action, screen_redraw):
         try:
             userfile
         except KeyError:
-            print("{message:<80}".format(message=f" User '{u_name}' not found..."))
+            print("{_m:<80}".format(
+                _m=f" User '{u_name}' not found...")    
+            )
             time.sleep(2)
         else:
-            print('\N{ESC}[2J')
-            print('\N{ESC}[H')
-            print(string.Template(layout['header']).substitute(tmpl_sub))
-            i = 0
-            while i < len(user):
-                if user[i].username == user[int(stdin_string)].username:
-                    tls_msg = tls_mode[user[i].ssl_flag] if user[i].ssl_flag in range(0, len(tls_mode)) else 'UNKNOWN'
-                    print(f"  LOGIN [#{i}] from '{user[i].username.split(NULL_CHAR, 1)[0].decode()}' (PID: {user[i].procid}):")
-                    print(f'    RHost: {user[i].host.split(NULL_CHAR, 1)[0].decode()} SSL: {tls_msg}')
-                    print(f'    Tagline: {user[i].tagline.split(NULL_CHAR, 1)[0].decode()}')
-                    print(f'    Currentdir: {user[i].currentdir.split(NULL_CHAR, 1)[0].decode()}')
-                    print(f'    Status: {user[i].status.split(NULL_CHAR, 1)[0].decode()}')
-                i += 1
-            print(string.Template(layout['separator']).substitute(tmpl_sub))
-            print('  USERFILE:')
-            for line in userfile:
-                j = 0
-                for field in ['FLAGS', 'CREDITS', 'IP']:
-                    if field in line:
-                        if line.startswith('CREDITS'):
-                            print("{:>4.4}{}".format(' ', re.sub(r'^(CREDITS [^0]\d+).*', r'\1 MB', line)), end="")
-                        else:
-                            print(f"{' ':>4.4}{line.strip()}")
-                        j += 1
-            print(string.Template(layout['footer']).substitute(tmpl_sub))
-            spy_user_wait(1, "  > Press ENTER to continue ")
+            print(f"{cur('2J')}{cur('H')}")
+            [ u_next, u_prev ] = userinfo(userfile, user, stdin_string)
+            # wait for user to press ENTER
+            j = 0
+            fill = '.'
+            while not get_key(user, u_idx, user_action, screen_redraw, u_next=u_next, u_prev=u_prev):
+                pad = ' ' * (3-j)
+                j = 0 if j > 3 else j
+                progress = '{:{fill}<{width}}'.format(
+                    '', fill=fill, width=int(j)
+                )
+                _m  = f"  > Press {col('k','w')}n{txt('r')} to view next login [#{u_next}], {col('k','w')}p{txt('r')} for previous " \
+                      f"or {col('k','w')}ESC{txt('r')} to go back "
+                print("{}{}{}".format(_m, progress, pad), end="")
+                print(f"{cur('A', 1)}")
+                j += 1
+                #u_next += 1
+
+            os.system("stty sane")
             screen_redraw = 1
+
     # action: kill user
     elif (stdin_string.rstrip().startswith('k')):
         user_action = 2
@@ -888,22 +995,40 @@ def spy_input_action(user, u_idx, user_action, screen_redraw):
                 print(f"{' ':<80}")
                 try:
                     os.kill(int(user_pid), 15)
-                    print("{message:<80}".format(message=f"Killed PID '{user_pid}' ..."))
+                    print("{_m:<80}".format(
+                        _m=f"Killed PID '{user_pid}' ...")
+                    )
                     time.sleep(2)
                 except OSError as k_err:
-                    print("{message:<80}".format(message=f'Error: kill user {k_err}'))
+                    print("{_m:<80}".format(
+                        _m=f'Error: kill user {k_err}')
+                    )
                     time.sleep(3)
-                print("{message:<80}".format(message=' '))
-        print('\N{ESC}[2J')
-        print('\N{ESC}[H')
-    # handle any other key presses
-    elif user_action == 0 and len(stdin_string) > 0:
+                print("{_m:<80}".format(_m=' '))
+        print(f"{cur('2J')}{cur('H')}")
+
+    # show help
+    elif user_action == 3:
+        print(f"{cur('A',15)}{cur('C',10)}")
+        print(f"{col('k','b')}{' '*30}Help{' '*30}")
+        print(f"{col('k','b')}  Bla bla bla bla bla{' '*43}")
+        print(f"{col('k','b')}{' '*64}{txt('r')}")
+        while not get_key(user, u_idx, user_action, screen_redraw):
+            time.sleep(0.1)
+        #print(f"{cur('2J')}")
         user_action = 3
         screen_redraw = 1
-        print(f"{' ':<80}")
-        print(f'{"":>4.4}{"User not found or invalid option ...":<76}')
-        print(f"{' ':<80}")
-        time.sleep(1)
+
+    # handle any other key presses
+    elif user_action == 0 and len(stdin_string) > 0:
+        if get_key(user, u_idx, user_action, screen_redraw):
+            user_action = 9
+            screen_redraw = 1
+        else:
+            print(f"{' ':<80}")
+            print(f'{"":>4.4}{"User not found or invalid option ...":<76}')
+            print(f"{' ':<80}")
+            time.sleep(1)
     else:
         user_action = 0
     stdin_string = ''
@@ -914,9 +1039,7 @@ def spy_input_action(user, u_idx, user_action, screen_redraw):
 #######
 
 def main():
-    """
-    read shm, call showusers() and showtotals()
-    """
+    """ read shm, call showusers() and showtotals() """
     if MAXUSERS == -1 and glconf_users() > 0:
         totalusers = glconf_users()
     else:
@@ -937,12 +1060,11 @@ def main():
 
     # clear screen
     if _WITH_SPY and SPY_MODE:
-        print('\N{ESC}[2J')
-        print('\N{ESC}[H')
+        print(f"{cur('2J')}{cur('H')}")
 
     # show logo with header
-    if len(sys.argv) == 1 and not RAW_OUTPUT or (_WITH_SPY and SPY_MODE):
-        print(string.Template(layout['header']).substitute(tmpl_sub))
+    if (len(sys.argv) == 1 and not RAW_OUTPUT) or (_WITH_SPY and SPY_MODE):
+        print(layout['header'])
     elif _WITH_XXL and XXL_MODE:
         print('\n[ PY-WHO ]\n')
 
@@ -954,9 +1076,7 @@ def main():
     while (_WITH_SPY and SPY_MODE) or (not SPY_MODE and repeat < 1):
         if debug == 0:
             try:
-                memory = sysv_ipc.SharedMemory(
-                    KEY, flags=sysv_ipc.SHM_RDONLY, mode=0
-                )
+                memory = sysv_ipc.SharedMemory(KEY, flags=sysv_ipc.SHM_RDONLY, mode=0)
             except sysv_ipc.ExistentialError as shm_err:
                 if not RAW_OUTPUT:
                     print(f"Error: {shm_err} (0x{KEY:08X})\n{' ':7.7}No users are logged in?\n")
@@ -970,21 +1090,21 @@ def main():
         # spy mode: on redraw first clear screen, then show logo/header,
         #           move cursor up using ansi escape codes and show user[x] lines
         if repeat > 0 and user_action == 0:
-            # debug: print vars, sleep 1s to be able to view them
+            # debug: print vars, sleep to be able to view them
             if debug > 4:
-                print('DEBUG: spy vars =', screen_redraw, user_action)
-                time.sleep(1)
+                print(f'DEBUG: spy vars user_action={user_action} screen_redraw={screen_redraw}')
+                time.sleep(2)
             if screen_redraw == 0:
-                # go back up and clear 'l' lines per user + totals + help lines
-                l = (len(userdata) * 3 + 3 + 4) if userdata else 0
-                print(f'\N{ESC}[{l}F')
-                print('\N{ESC}[0J')
-                print('\N{ESC}[2F')
+                # go back up and clear 'l' lines per user + totals + usage lines
+                # len(layout['header'].splitlines())
+                l = (len(userdata) * 3) if userdata else 0
+                print(f"{cur('F', l+3+2)}")
+                print(f"{cur('0J')}{cur('F',2)}", end="")
             else:
-                print('\N{ESC}[2J')
-                print('\N{ESC}[H')
-                print(string.Template(layout['header']).substitute(tmpl_sub))
+                print(f"{cur('2J')}{cur('H')}", end="")
+                print(layout['header'])
                 screen_redraw = 0
+
         # reset user data for every repeat
         userdata = []
         u_idx = 0
@@ -1004,40 +1124,44 @@ def main():
                 userdata.insert(u_idx, struct_ONLINE._make(user_tuple))
                 if user_action == 0:
                     if debug > 2:
-                        print(f'DEBUG: user loop sys.argv={sys.argv} (len={len(sys.argv)}) \
-                                    user_idx={USER_IDX} user_arg={user_arg} raw_output={RAW_OUTPUT} \
-                                    repeat={repeat} u_idx={u_idx} chidden={CHIDDEN}')
+                        print(f'DEBUG: user loop sys.argv={sys.argv} (len={len(sys.argv)})',
+                              f'user_idx={USER_IDX} user_arg={user_arg} raw_output={RAW_OUTPUT}',
+                              f'repeat={repeat} u_idx={u_idx} chidden={CHIDDEN}')
                     if RAW_OUTPUT < 2:
-                        kwargs = showusers(len(sys.argv) - RAW_OUTPUT - 1, user_arg, RAW_OUTPUT, repeat,
-                                        userdata, u_idx, CHIDDEN, **kwargs)
+                        kwargs = showusers(
+                            userdata, len(sys.argv) - RAW_OUTPUT - 1, user_arg, RAW_OUTPUT, repeat, u_idx, CHIDDEN, **kwargs
+                        )
                     elif len(sys.argv) == 1:
-                        kwargs = showusers(len(sys.argv) - 1, user_arg, RAW_OUTPUT, repeat,
-                                        userdata, u_idx, CHIDDEN, **kwargs)
+                        kwargs = showusers(
+                            userdata, len(sys.argv) - 1, user_arg, RAW_OUTPUT, repeat, u_idx, CHIDDEN, **kwargs
+                        )
                     elif RAW_OUTPUT == 3:
-                        kwargs = showusers(len(sys.argv) - 2, user_arg, RAW_OUTPUT, repeat,
-                                        userdata, u_idx, CHIDDEN, **kwargs)
+                        kwargs = showusers(
+                            userdata, len(sys.argv) - 2, user_arg, RAW_OUTPUT, repeat, u_idx, CHIDDEN, **kwargs
+                        )
                     else:
-                        kwargs = showusers(0, user_arg, RAW_OUTPUT, repeat,
-                                        userdata, u_idx, CHIDDEN, **kwargs)
+                        kwargs = showusers(
+                            userdata, 0, user_arg, RAW_OUTPUT, repeat, u_idx, CHIDDEN, **kwargs
+                        )
 
                 u_idx += 1
 
                 if _WITH_SPY and SPY_MODE:
-                    hlines = string.Template(layout['header']).substitute(tmpl_sub).count('\n')
-                    if (u_idx * 3) + hlines > os.get_terminal_size().lines:
-                        if screen_redraw == 0:
-                            time.sleep(1)
-                            screen_redraw = 1
+                    hdr_lines = layout['header'].count('\n')
+                    if ((u_idx * 3) + hdr_lines > os.get_terminal_size().lines and screen_redraw == 0):
+                        time.sleep(1)
+                        screen_redraw = 1
 
         # make sure we do not show geoip2 error msgs more than once
         if _WITH_SPY and geoip2_enable:
             geoip2_shown_err = kwargs['geoip2_shown_err']
+
         # show totals or single user stats
         if user_action == 0:
-            if len(sys.argv) == 1 or RAW_OUTPUT == 3 or (_WITH_SPY and SPY_MODE) or (_WITH_XXL and XXL_MODE):
+            if (len(sys.argv) == 1) or (RAW_OUTPUT == 3) or (_WITH_SPY and SPY_MODE) or (_WITH_XXL and XXL_MODE):
                 showtotals(RAW_OUTPUT, totalusers, **kwargs)
                 if not RAW_OUTPUT and not XXL_MODE:
-                    print(string.Template(layout['footer']).substitute(tmpl_sub))
+                    print(layout['footer'])
             elif user_arg and not XXL_MODE:
                 u_found = False
                 arg_idx = 0
@@ -1060,21 +1184,21 @@ def main():
             signal.signal(signal.SIGINT, spy_break)
             if user_action == 0:
                 spy_usage(u_idx)
-            result = spy_input_action(userdata, u_idx, user_action, screen_redraw)
-            [user_action, screen_redraw] = result
+            [ user_action, screen_redraw ] = spy_input_action(userdata, u_idx, user_action, screen_redraw)
             if user_action == 0:
                 time.sleep(1)
-            if _WITH_GEOIP and geoip2_enable:
+            elif _WITH_GEOIP and geoip2_enable:
                 time.sleep(2)
 
         repeat += 1
 
     try:
         memory.detach()
-    except sysv_ipc.Error:
+    except (UnboundLocalError, sysv_ipc.Error):
         pass
     if _WITH_GEOIP and geoip2_enable:
         GEOIP2_CLIENT.close()
+    os.system("stty sane")
     sys.exit(0)
 
 if __name__ == "__main__":

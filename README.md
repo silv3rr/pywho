@@ -47,13 +47,15 @@ Same args and options as pzs-ng sitewho:
 Requirements:
 
 - Python3 and 'sysv_ipc' module, all other modules used are from standard lib
+<<<<<<< HEAD
 - only latest glftpd version 2.12 is supported (other versions untested)
+=======
+- only latest glftpd version (2.11a+) is supported, other versions untested
+>>>>>>> d9385de (README formatting)
 
-__Choose 1 of the 3 installation methods below:__
+__Choose 1 of the 3 installation methods below__
 
-### 1) OS packages
-
-Seems CentOS does not have packages available, use venv or binaries instead (see below).
+**1)** OS packages:
 
 On Debian just install these packages and run the script:
 
@@ -61,7 +63,9 @@ On Debian just install these packages and run the script:
 - `apt install python3-geoip2`  (optional)
 - `git clone` this repo and run script: `./pywho.py`
 
-### 2) Virtual Env
+Seems CentOS does not have packages available, use venv or binaries instead.
+
+**2)** Virtual Env:
 
 Alternatively use venv and pip:
 
@@ -80,7 +84,7 @@ Now 'git clone' this repo and run `./pywho.py`
 
 _If you want to build sysv_ip from src see [https://github.com/osvenskan/sysv_ip](https://github.com/osvenskan/sysv_ipc)_
 
-### 3) Binaries
+**3)** Binaries:
 
 [![Build pywho](https://github.com/silv3rr/pywho/actions/workflows/build.yml/badge.svg)](https://github.com/silv3rr/pywho/actions/workflows/build.yml)
 

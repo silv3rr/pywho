@@ -2,7 +2,7 @@
 backup/
 dist/
 build/
-wip/
+tmp/
 *.bak
 pywho
 

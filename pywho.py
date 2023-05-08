@@ -9,9 +9,6 @@
 # Uses SHM and glftpd's 'ONLINE' C struct, module sysv_ipc is required         #
 # See README and comments in pywho.conf for install and config instructions    #
 ################################################################################
-<<<<<<< HEAD
-"""
-=======
 VERSION = "220207"                                                       # slv #
 ################################################################################
 >>>>>>> main
@@ -189,7 +186,6 @@ KEY = int(IPC_KEY, 16)
 =======
 KEY = int(IPC_KEY,16)
 #NULL_CHAR = '\0'
->>>>>>> main
 NULL_CHAR = b'\x00'
 if debug > 3:
     print(f"DEBUG:\tIPC_KEY={IPC_KEY} KEY={KEY} sysv_ipc.SHM_RDONLY={sysv_ipc.SHM_RDONLY}\n",
@@ -1032,7 +1028,6 @@ def userinfo(userfile, user, stdin_string):
           print(f'    Tagline: {user[i].tagline.split(NULL_CHAR, 1)[0].decode()}')
           print(f'    Currentdir: {user[i].currentdir.split(NULL_CHAR, 1)[0].decode()}')
           print(f'    Status: {user[i].status.split(NULL_CHAR, 1)[0].decode()}')
->>>>>>> main
         i += 1
     if color == 0:
         print(default['separator'])

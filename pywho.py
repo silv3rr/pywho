@@ -9,7 +9,12 @@
 # Uses SHM and glftpd's 'ONLINE' C struct, module sysv_ipc is required         #
 # See README and comments in pywho.conf for install and config instructions    #
 ################################################################################
+<<<<<<< HEAD
 """
+=======
+VERSION = "220207"                                                       # slv #
+################################################################################
+>>>>>>> main
 
 import string
 import struct
@@ -178,8 +183,13 @@ MAXUSERS = maxusers if maxusers else 0
 
 # shm and struct (default ipc_key: 0x0000dead=57005)
 IPC_KEY = ipc_key if ipc_key else "0x0000DEAD"
+<<<<<<< HEAD
 KEY = int(IPC_KEY, 16)
 # NULL_CHAR = '\0'
+=======
+KEY = int(IPC_KEY,16)
+#NULL_CHAR = '\0'
+>>>>>>> main
 NULL_CHAR = b'\x00'
 if debug > 3:
     print(f"DEBUG:\tIPC_KEY={IPC_KEY} KEY={KEY} sysv_ipc.SHM_RDONLY={sysv_ipc.SHM_RDONLY}\n",
@@ -368,6 +378,7 @@ def get_gid(g_name):
 
 
 def filesize(filename):
+<<<<<<< HEAD
     """ get filesize in bytes """
     for file in filename, f'{glrootpath}{filename}':
         try:
@@ -375,6 +386,64 @@ def filesize(filename):
         except OSError:
             pass
     return 0
+=======
+  """
+  get filesize in bytes
+  """
+  for f in filename, f'{glrootpath}{filename}':
+    try:
+      return os.path.getsize(f)
+    except:
+      pass
+  return 0
+
+
+def showusers(mode, ucomp, raw, repeat, user, x, chidden, geoip2_client, downloads, uploads,
+             total_up_speed, total_dn_speed, browsers, idlers, onlineusers, geoip2_buf, geoip2_shown_ex):
+  """
+  output formatted user stats
+  """ 
+  # NOTE:
+  #   to test total up/dn speed set vars:
+  #     uploads, downloads, total_up_speed, total_dn_speed = 10, 3, 18576, 8576   # 1048576 (1024*1024)
+  #   examples of 'status' output:
+  #     b'STOR filename'
+  #     b'LIST -al\x00partof-DIR\x003/0504/TEST2\x00/foo-BAR/1'
+  #     b'RETR filename.rar\x00X/',
+  #     b'STAT'
+  #     b'PASV'
+  #     b'Connecting...'
+  # (OLD) glftpd 2.11: username = user[x].username.decode().split(NULL_CHAR, 1)[0]
+  username = user[x].username.split(NULL_CHAR, 1)[0].decode()
+  tagline = user[x].tagline.split(NULL_CHAR, 1)[0].decode()
+  currentdir = user[x].currentdir.split(NULL_CHAR, 1)[0].decode()
+  u_status = user[x].status.split(NULL_CHAR, 1)[0].decode()
+  tstop_tv_sec = calendar.timegm(time.gmtime())
+  tstop_tv_usec = datetime.datetime.now().microsecond
+  host = g_name = traf_dir = None
+  speed = pct = mask = noshow = 0
+  maskchar = ' '
+  bar = ""
+  userip = '0.0.0.0'
+  iso_code = "xX"
+
+  # skip if host is empty
+  if user[x].host != b'':
+    host = user[x].host.split(NULL_CHAR, 1)[0].decode()
+    (_, addr) = host.split('@', 2)[0:2]
+    # ipv4/6
+    # if re.search(r'([\d.]{7,}|:)', addr):
+    if (''.join((addr).split('.', 3)).isdigit()) or (':' in addr):
+      userip = addr
+    # not fqdn
+    elif not '.' in addr:
+      userip = '127.0.0.1' if addr == 'localhost' else '0.0.0.0'
+    else:
+      try:
+        userip = socket.gethostbyname(addr)
+      except:
+        pass
+>>>>>>> main
 
 
 def cprint(message):
@@ -733,6 +802,7 @@ def showusers(user, *args, **kwargs):
         downloads=downloads, uploads=uploads, total_up_speed=total_up_speed, total_dn_speed=total_dn_speed,
         browsers=browsers, idlers=idlers, onlineusers=onlineusers, geoip2_client=geoip2_client, geoip2_shown_err=geoip2_shown_err
     )
+<<<<<<< HEAD
 
 
 def showtotals(*args, **kwargs):
@@ -755,6 +825,92 @@ def showtotals(*args, **kwargs):
         total_up_speed = (total_up_speed / 1024)
         total_dn_speed = (total_dn_speed / 1024)
         speed_unit = 'MB/s'
+=======
+    print ("{message:<{col}.{col}}".format(col=columns, message=info))
+    # separator:        print("{message:<{col}.{col}}".format(col=columns, message=layout['separator']))
+    # sep w/ calc len:  msg_len = max(len(upload), len(download), len(info))
+    #                   print("{message:<{col}.{col}}".format(col = min((msg_len+1)*2, columns), message=layout['separator'] * msg_len))
+    print()
+    onlineusers += 1
+
+  # spymode: try to show as much useful info as possible..
+  
+  elif _WITH_SPY and spy_mode:
+    # show pct/bar or currentdir on right side
+    if not pct and not bar:
+      pct_spy = ''
+    else:
+      pct_spy = "{:>4.0f}%:".format(pct)
+    if bar:
+      if bar == '?->':  
+        bar_spy = "{:<22.22}".format(user[x].status.split(NULL_CHAR, 1)[0].decode()[5:]) if (len(status) > 5) else "{:<22.22}".format(' ')
+      else:
+        bar_spy = "{:<16.16s}".format(bar)
+    else:
+      # show '-' to confirm (big) file is in progress
+      if pct > 0:
+        bar_spy = "{:<16.16s}".format('-')
+      if not pct:
+        bar_spy = "{:<22.22}".format(currentdir.replace('/site', ''))
+    pb_spy=f'{pct_spy} {bar_spy}'
+    if (mb_xfered):
+      print(string.Template(tmpl_str_spy['upload']).substitute(tmpl_sub).format(username=username, g_name=g_name, status=status, mb_xfered=mb_xfered))
+    else:
+      print(string.Template(tmpl_str_spy['download']).substitute(tmpl_sub).format(username=username, g_name=g_name, status=status, pb_spy=pb_spy))
+    # right: show filename or status 
+    if (u_status[:5] in ['RETR ', 'STOR ']):
+      fn_spy = f'file: {filename}'
+    elif (u_status[:5] in ['LIST ', 'STAT ', 'SITE ']):      
+      fn_spy = u_status
+    elif u_status[5:].startswith('-') or (u_status == 'Connecting...'):
+      fn_spy = u_status
+    else:
+      fn_spy = filename
+    # left: rotate between ip or tagline on left
+    if repeat % 8 in range(0, 5):
+      print(string.Template(tmpl_str_spy['info']).substitute(tmpl_sub).format(info="{:8.8s} {:>18.18s}".format(
+        tagline, userip if userip != '0.0.0.0' else addr), online=online, fn_spy=fn_spy)
+      )
+    else:
+      print(string.Template(tmpl_str_spy['info']).substitute(tmpl_sub).format(info=tagline, online=online, fn_spy=fn_spy))
+    print(string.Template(layout['separator_spy']).substitute(tmpl_sub).format('', x=x))
+    onlineusers += 1
+
+  return dict(
+    downloads=downloads, uploads=uploads, total_up_speed=total_up_speed, total_dn_speed=total_dn_speed, 
+    browsers=browsers, idlers=idlers, onlineusers=onlineusers, geoip2_buf=geoip2_buf, geoip2_shown_ex=geoip2_shown_ex
+  )
+
+
+def showtotals(raw, maxusers, downloads, uploads, total_up_speed, total_dn_speed, browsers, idlers, onlineusers, geoip2_buf, geoip2_shown_ex):
+  """
+  output formatted totals
+  """
+  if (total_up_speed > (threshold*threshold)) or (total_dn_speed > (threshold*threshold)):
+    total_up_speed = (total_up_speed / 1024 / 1024)
+    total_dn_speed = (total_dn_speed / 1024 / 1024)
+    speed_unit ='GB/s'
+  elif (total_up_speed > threshold) or (total_dn_speed > threshold):
+    total_up_speed = (total_up_speed / 1024)
+    total_dn_speed = (total_dn_speed / 1024)
+    speed_unit ='MB/s'
+  else:
+    speed_unit = 'KB/s'
+  if not raw:
+    if _WITH_SPY and spy_mode:
+      print(string.Template(tmpl_str_spy['totals']).substitute(tmpl_sub).format(
+        uploads=uploads, total_up_speed=total_up_speed,downloads=downloads, total_dn_speed=total_dn_speed,
+        total=uploads + downloads, total_speed = total_up_speed + total_dn_speed, unit=speed_unit
+      ))
+      print(string.Template(tmpl_str_spy['users']).substitute(tmpl_sub).format(space=' ', onlineusers=onlineusers, maxusers=maxusers))
+    elif _WITH_XXL and xxl_mode:
+      totals = string.Template(tmpl_str_xxl['totals']).substitute(tmpl_sub).format(
+        uploads=uploads, total_up_speed=total_up_speed,downloads=downloads, total_dn_speed=total_dn_speed,
+        total=uploads + downloads, total_speed = total_up_speed + total_dn_speed, unit=speed_unit
+      )
+      users = string.Template(tmpl_str_xxl['users']).substitute(tmpl_sub).format(space=' ', onlineusers=onlineusers, maxusers=maxusers)
+      print ("{message:<{col}.{col}}".format(col=os.get_terminal_size().columns, message=f'{totals} {users}'))
+>>>>>>> main
     else:
         speed_unit = 'KB/s'
     if not raw:
@@ -805,6 +961,7 @@ def spy_break(signal_received, frame):
     if _WITH_GEOIP and geoip2_enable:
         GEOIP2_CLIENT.close()
     sys.exit(0)
+<<<<<<< HEAD
 
 # TODO: add 'h' help popup instead of the lines at bottom?
 #       add 'v' to view first user
@@ -843,6 +1000,39 @@ def userinfo(userfile, user, stdin_string):
             print(f'    Tagline: {user[i].tagline.split(NULL_CHAR, 1)[0].decode()}')
             print(f'    Currentdir: {user[i].currentdir.split(NULL_CHAR, 1)[0].decode()}')
             print(f'    Status: {user[i].status.split(NULL_CHAR, 1)[0].decode()}')
+=======
+  # userinfo
+  if s_line[:2].strip().isdigit() and int(s_line[:2].strip()) in range(0, x):
+    user_action = 1
+    u_name = user[int(s_line.strip())].username.split(NULL_CHAR, 1)[0].decode()
+    try:
+      with open(f'{glrootpath}/ftp-data/users/{u_name}', 'r') as f:
+        userfile = f.readlines()
+    except:
+      try:
+        with open(f'/ftp-data/users/{u_name}', 'r') as f:
+          userfile = f.readlines()
+      except:
+        pass
+    try:
+      userfile
+    except:
+      print ("{message:<80}".format(message=f" User '{u_name}' not found..."))
+      time.sleep(2)
+    else:
+      print(f'\N{ESC}[2J')
+      print(f'\N{ESC}[H')
+      print(string.Template(layout['header']).substitute(tmpl_sub))
+      i=0
+      while i < len(user):
+        if user[i].username == user[int(s_line)].username:
+          tls_msg = tls_mode[user[i].ssl_flag] if user[i].ssl_flag in range(0, len(tls_mode)) else 'UNKNOWN'
+          print(f"  LOGIN [#{i}] from '{user[i].username.split(NULL_CHAR, 1)[0].decode()}' (PID: {user[i].procid}):")
+          print(f'    RHost: {user[i].host.split(NULL_CHAR, 1)[0].decode()} SSL: {tls_msg}')
+          print(f'    Tagline: {user[i].tagline.split(NULL_CHAR, 1)[0].decode()}')
+          print(f'    Currentdir: {user[i].currentdir.split(NULL_CHAR, 1)[0].decode()}')
+          print(f'    Status: {user[i].status.split(NULL_CHAR, 1)[0].decode()}')
+>>>>>>> main
         i += 1
     if color == 0:
         print(default['separator'])
@@ -1193,9 +1383,103 @@ def main():
         repeat += 1
 
     try:
+<<<<<<< HEAD
         memory.detach()
     except (UnboundLocalError, sysv_ipc.Error):
         pass
+=======
+      memory = sysv_ipc.SharedMemory(KEY, flags = sysv_ipc.SHM_RDONLY, mode = 0)
+    except sysv_ipc.ExistentialError as e:
+      if not raw_output:
+        print("Error: {} (0x{:08X})\n{:7.7}No users are logged in?\n".format(e, KEY, ' '))
+      else:
+        print("\"ERROR\" \"No users logged in?\" \"{}\" \"0x{:08X}\"".format(e, KEY))
+      sys.exit(1)
+  else:
+    memory = sysv_ipc.SharedMemory(KEY, flags = sysv_ipc.SHM_RDONLY, mode = 0)
+  buf = memory.read()
+  
+  # spymode: on redraw first clear screen, then show logo/header,
+  #          move cursor up using ascii escape codes, then show user[x] lines
+  if repeat > 0 and user_action == 0:
+    # debug: print vars, sleep 1s to view them
+    if (debug > 4):
+      print('DEBUG: spy vars =', screen_redraw, user_action)
+      time.sleep(1)
+    if screen_redraw == 0:
+      # go back up and clear 'l' lines per user + totals + help lines
+      l = (len(user) * 3 + 3 + 4)
+      print(f'\N{ESC}[{l}F')
+      print(f'\N{ESC}[0J')
+      print(f'\N{ESC}[2F')
+    else:
+      print(f'\N{ESC}[2J')
+      print(f'\N{ESC}[H')
+      print(string.Template(layout['header']).substitute(tmpl_sub))
+      screen_redraw = 0
+
+  # reset user data for every repeat
+  user = []
+  x = 0
+  kwargs = dict(
+    downloads=downloads, uploads=uploads, total_up_speed=total_up_speed, total_dn_speed=total_dn_speed,
+    browsers=browsers, idlers=idlers, onlineusers=onlineusers, geoip2_buf=geoip2_buf, geoip2_shown_ex=geoip2_shown_ex
+  )
+  # user loop: unpack shm (buf) as py struct, loop over struct.iter (904 bytes)
+  #            make tuples in a list (user), skip if empty
+  for user_tuple in struct.iter_unpack(stformat, buf):
+    if struct_ONLINE._make(user_tuple).procid:
+      user.insert(x, struct_ONLINE._make(user_tuple))
+      if user_action == 0:
+        # totusers = maxusers if totusers > maxusers else totusers
+        # totusers = len(user)
+        if (debug > 2):
+          print(f'DEBUG: user loop sys.argv={sys.argv} (len={len(sys.argv)}) user_idx={user_idx} user_arg={user_arg} raw_output={raw_output} repeat={repeat} x={x} chidden={chidden}')
+        if raw_output < 2:
+          kwargs = showusers(len(sys.argv) - raw_output - 1, user_arg, raw_output, repeat, user, x, chidden, geoip2_client, **kwargs)
+        elif len(sys.argv) == 1:
+          kwargs = showusers(len(sys.argv) - 1, user_arg, raw_output, repeat, user, x, chidden, geoip2_client, **kwargs)
+        elif raw_output == 3:
+          kwargs = showusers(len(sys.argv) - 2, user_arg, raw_output, repeat, user, x, chidden, geoip2_client, **kwargs)
+        else:
+          kwargs = showusers(0, user_arg, raw_output, repeat, user, x, chidden, geoip2_client, **kwargs)
+      x += 1
+  if _WITH_SPY and spy_mode:
+    geoip2_shown_ex = kwargs['geoip2_shown_ex']
+
+  # show totals or single user stats
+  if user_action == 0:
+    if len(sys.argv) == 1 or raw_output == 3 or (_WITH_SPY and spy_mode) or (_WITH_XXL and xxl_mode):
+      showtotals(raw_output, maxusers, **kwargs)
+      if not raw_output and not xxl_mode:
+        print(string.Template(layout['footer']).substitute(tmpl_sub))
+    elif user_arg and not xxl_mode:
+      u_found = False
+      i = 0
+      while i < len(user):
+        if user[i].username.split(NULL_CHAR, 1)[0].decode() == user_arg:
+          u_found = True
+          break
+        i += 1
+      if not u_found:
+        if not raw_output:
+          print(f"\002{user_arg}\002 is not online\n")
+        else:
+          print(f"\"ERROR\" \"User {user_arg} not online.\"\n")
+        sys.exit(1)
+    if (_WITH_ALTWHO and not raw_output) or (_WITH_XXL and xxl_mode):
+      print()
+
+  # spy-mode: handle keyboard input
+  if _WITH_SPY and spy_mode:
+    signal.signal(signal.SIGINT, spy_break)
+    if user_action == 0:
+      spy_usage()
+    result = spy_input_action(user, user_action, screen_redraw)
+    [ user_action, screen_redraw ] = result
+    if user_action == 0:
+      time.sleep(1)
+>>>>>>> main
     if _WITH_GEOIP and geoip2_enable:
         GEOIP2_CLIENT.close()
     os.system("stty sane")

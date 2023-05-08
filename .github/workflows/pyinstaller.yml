@@ -5,14 +5,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Show OS version
-      run: cat /etc/os-release
-    - name: Package Application
-      uses: JackMcKew/pyinstaller-action-linux@main
-      with:
-        path: .
-    - uses: actions/upload-artifact@v2
-      with:
-        name: pyinstaller-test
-        path: ./dist/linux/pywho
+      - uses: actions/checkout@v2
+      - name: Show OS version
+        run: cat /etc/os-release
+      - name: Package Application
+        uses: JackMcKew/pyinstaller-action-linux@main
+        with:
+          path: .
+      - uses: actions/upload-artifact@v2
+        with:
+          name: pyinstaller-test
+          path: ./dist/linux/pywho

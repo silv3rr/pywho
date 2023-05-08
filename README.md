@@ -47,7 +47,7 @@ Same args and options as pzs-ng sitewho:
 Requirements:
 
 - Python3 and 'sysv_ipc' module, all other modules used are from standard lib
-- only latest glftpd version 2.11a is supported (other versions untested)
+- only latest glftpd version 2.12 is supported (other versions untested)
 
 __Choose 1 of the 3 installation methods below:__
 
@@ -82,11 +82,13 @@ _If you want to build sysv_ip from src see [https://github.com/osvenskan/sysv_ip
 
 ### 3) Binaries
 
-If you do not want to install python modules, there's also a single executable file available for [download](releases).
+[![Build pywho](https://github.com/silv3rr/pywho/actions/workflows/build.yml/badge.svg)](https://github.com/silv3rr/pywho/actions/workflows/build.yml)
+
+If you do not want to install python modules, there's also a single executable file available for [download](../../releases).
 
 Supported: CentOS 7, Debian 10, Debian 11 and Ubuntu 20.04
 
-Get the files here: [Releases](releases)
+Get the files here: [Releases](../../releases)
 
 ## Configuration
 

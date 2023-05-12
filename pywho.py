@@ -28,13 +28,13 @@ import fcntl
 import tty
 import sysv_ipc
 
-VERSION = "2023XXXX"
+VERSION = "20230512"
 
 # vars used like #ifdef's in orig sitewho.c
 _WITH_ALTWHO = True
 _WITH_SS5 = False
 _WITH_GEOIP = False
-_WITH_SPY = False
+_WITH_SPY = True
 _WITH_XXL = False
 
 SCRIPT = os.path.basename(sys.argv[0])
@@ -416,8 +416,12 @@ def get_geocode(client, userip, shown_err):
     return [ client, iso_code, shown_err ]
 
 
-def showusers(user, *args, **kwargs):
+def showusers(user, *args, **kwargs) -> dict:
     """ output formatted user stats """
+    # TODO:
+    #print('DEBUG: FLASK_MODE =', FLASK_MODE)
+    #print('DEBUG: _WITH_SPY =', _WITH_SPY)
+    #print('DEBUG: SPY_MODE =', SPY_MODE)
     # set variables from function parameters
     mode = args[0]
     ucomp = args[1]
@@ -426,14 +430,16 @@ def showusers(user, *args, **kwargs):
     x = args[4]
     chidden = args[5]
     downloads = kwargs['downloads']
-    uploads = kwargs['downloads']
+    uploads = kwargs['uploads']
     total_up_speed = kwargs['total_up_speed']
     total_dn_speed = kwargs['total_dn_speed']
-    browsers = kwargs['total_dn_speed']
+    browsers = kwargs['browsers']
     idlers = kwargs['idlers']
     onlineusers = kwargs['onlineusers']
     geoip2_client = kwargs['geoip2_client']
     geoip2_shown_err = kwargs['geoip2_shown_err']
+
+    #print(f'DEBUG: mode={mode} raw={raw}')
 
     # NOTE:
     #   to test total up/dn speed set vars like this:
@@ -450,7 +456,6 @@ def showusers(user, *args, **kwargs):
     username = user[x].username.split(NULL_CHAR, 1)[0].decode()
     tagline = user[x].tagline.split(NULL_CHAR, 1)[0].decode()
     currentdir = user[x].currentdir.split(NULL_CHAR, 1)[0].decode()
-    tagline = user[x].tagline.split(NULL_CHAR, 1)[0].decode()
     u_status = user[x].status.split(NULL_CHAR, 1)[0].decode()
     tstop_tv_sec = calendar.timegm(time.gmtime())
     tstop_tv_usec = datetime.datetime.now().microsecond
@@ -469,7 +474,7 @@ def showusers(user, *args, **kwargs):
         if (''.join((addr).split('.', 3)).isdigit()) or (':' in addr):
             userip = addr
         # addr is not a fqdn
-        elif not '.' in addr:
+        elif '.' not in addr:
             userip = '127.0.0.1' if addr == 'localhost' else '0.0.0.0'
         else:
             try:
@@ -483,7 +488,7 @@ def showusers(user, *args, **kwargs):
         filename = ''
 
     if user[x].groupid >= 0:
-        g_name = get_group(user[x].groupid)
+        g_name = get_group(user[x].groupid) if get_group(user[x].groupid) else ""
 
     # check if user in hidden users/groups
     if ((nocase and ((username.lower() in husers.lower()) or (g_name.lower() in hgroups.lower()))) or
@@ -561,7 +566,7 @@ def showusers(user, *args, **kwargs):
         else:
             status = 'idle|{}'.format(time.strftime("%H|%M|%S", time.gmtime(seconds)))
 
-    online = '{}'.format(time.strftime("%H:%M:%S", time.gmtime(tstop_tv_sec - user[x].login_time)))
+    user.online = '{}'.format(time.strftime("%H:%M:%S", time.gmtime(tstop_tv_sec - user[x].login_time)))
 
     # format both Up/Dn speed to KB/s MB/s GB/s
     if speed and (traf_dir == "Up" or traf_dir == "Dn"):
@@ -626,7 +631,7 @@ def showusers(user, *args, **kwargs):
                     )
                 else:
                     print("{} : {:1}{}/{} has been online for {:8.8s}.".format(
-                        status,maskchar, username, g_name, online
+                        status, maskchar, username, g_name, online
                     ))
             elif raw == 1 and (SHOWALL or (not noshow and not mask and (maskchar != '*'))):
                 print("\"USER\" \"{:1}\" \"{}\" \"{}\" {} \"{}\" \"{}\" \"{}\" \"{:.1f}{}\" \"{}\" \"{}\" \"{}\" \"{}\" \"{}\"".format(
@@ -668,17 +673,17 @@ def showusers(user, *args, **kwargs):
             upload = string.Template(tmpl_str['upload']).substitute(tmpl_sub).format(
                 username=username, g_name=g_name, tagline=tagline, status=status, mb_xfered=mb_xfered
             )
-            cprint(upload)
+            print(fmt_max_col(upload))
         else:
             download = string.Template(tmpl_str['download']).substitute(tmpl_sub).format(
                 username=username, g_name=g_name, tagline=tagline, status=status.replace('  ', ' ').upper(), pct=pct, bar=p_bar
             )
-            cprint(download)
+            print(fmt_max_col(download))
         info = string.Template(tmpl_str['info']).substitute(tmpl_sub).format(
                 userip=userip if userip != '0.0.0.0' else addr, online=online, filename=filename
         )
-        cprint(info)
-        # separator:        cprint(layout['separator'])
+        print(fmt_max_col(info))
+        # separator:        fmt_max_col(layout['separator'])
         # sep w/ calc len:  msg_len = max(len(upload), len(download), len(info))
         #                   print("{_m:<{col}.{col}}".format(col = min((msg_len+1)*2, columns), _m=layout['separator'] * msg_len))
         print()

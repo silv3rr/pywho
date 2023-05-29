@@ -702,144 +702,89 @@ def main():
         except (KeyError, IndexError):
             pass
 
-    # init screen drawing related vars
-    repeat = 0
-    user_action = 0         # 1=userinfo 2=kill user 3=other
-    screen_redraw = 0       # 1=redraw logo/header
-
-    # clear screen
-    if _WITH_SPY and SPY_MODE:
-        print(f"{cur('2J')}{cur('H')}")
-
     # show logo with header
-    if (len(sys.argv) == 1 and not RAW_OUTPUT) or (_WITH_SPY and SPY_MODE):
+    if (len(sys.argv) == 1 and not RAW_OUTPUT):
         print(layout['header'])
     elif _WITH_XXL and XXL_MODE:
         print('\n[ PY-WHO ]\n')
 
-    # loop: if in spymode keep repeating indefinitely,
-    #       for non-spy modes quit after single iteration
     userdata = []
     u_idx = 0
     geoip2_shown_err = 0
-    while (_WITH_SPY and SPY_MODE) or (not SPY_MODE and repeat < 1):
-        if debug == 0:
-            try:
-                memory = sysv_ipc.SharedMemory(KEY, flags=sysv_ipc.SHM_RDONLY, mode=0)
-            except sysv_ipc.ExistentialError as shm_err:
-                if not RAW_OUTPUT:
-                    print(f"Error: {shm_err} (0x{KEY:08X})\n{' ':7.7}No users are logged in?\n")
-                else:
-                    print(f'"ERROR" "No users logged in?" "{shm_err}" "0x{KEY:08X}"')
-                sys.exit(1)
-        else:
+    if debug == 0:
+        try:
             memory = sysv_ipc.SharedMemory(KEY, flags=sysv_ipc.SHM_RDONLY, mode=0)
-        buf = memory.read()
-
-        # spy mode: on redraw first clear screen, then show logo/header,
-        #           move cursor up using ansi escape codes and show user[x] lines
-        if repeat > 0 and user_action == 0:
-            # debug: print vars, sleep to be able to view them
-            if debug > 4:
-                print(f'DEBUG: spy vars user_action={user_action} screen_redraw={screen_redraw}')
-                time.sleep(2)
-            if screen_redraw == 0:
-                # go back up and clear 'l' lines per user + totals + usage lines
-                # len(layout['header'].splitlines())
-                l = (len(userdata) * 3) if userdata else 0
-                print(f"{cur('F', l+3+2)}")
-                print(f"{cur('0J')}{cur('F',2)}", end="")
+        except sysv_ipc.ExistentialError as shm_err:
+            if not RAW_OUTPUT:
+                print(f"Error: {shm_err} (0x{KEY:08X})\n{' ':7.7}No users are logged in?\n")
             else:
-                print(f"{cur('2J')}{cur('H')}", end="")
-                print(layout['header'])
-                screen_redraw = 0
+                print(f'"ERROR" "No users logged in?" "{shm_err}" "0x{KEY:08X}"')
+            sys.exit(1)
+    else:
+        memory = sysv_ipc.SharedMemory(KEY, flags=sysv_ipc.SHM_RDONLY, mode=0)
+    buf = memory.read()
 
-        # reset user data for every repeat
-        userdata = []
-        u_idx = 0
+    kwargs = dict(
+        downloads=DOWNLOADS, uploads=UPLOADS,
+        total_up_speed=TOTAL_UP_SPEED, total_dn_speed=TOTAL_DN_SPEED,
+        browsers=BROWSERS, idlers=IDLERS, onlineusers=ONLINEUSERS,
+        geoip2_client = GEOIP2_CLIENT if GEOIP2_CLIENT else None,
+        geoip2_shown_err = geoip2_shown_err if geoip2_shown_err else 0
+    )
 
-        kwargs = dict(
-            downloads=DOWNLOADS, uploads=UPLOADS,
-            total_up_speed=TOTAL_UP_SPEED, total_dn_speed=TOTAL_DN_SPEED,
-            browsers=BROWSERS, idlers=IDLERS, onlineusers=ONLINEUSERS,
-            geoip2_client = GEOIP2_CLIENT if GEOIP2_CLIENT else None,
-            geoip2_shown_err = geoip2_shown_err if geoip2_shown_err else 0
-        )
+    # user loop: unpack shm in 'buf' as py struct, loop over struct.iter (904 bytes)
+    #            make tuples in a list called 'userdata', skip if empty
+    for user_tuple in struct.iter_unpack(STRUCT_FMT, buf):
+        if struct_ONLINE._make(user_tuple).procid:
+            userdata.insert(u_idx, struct_ONLINE._make(user_tuple))
+            if debug > 2:
+                print(f'DEBUG: user loop sys.argv={sys.argv} (len={len(sys.argv)})',
+                        f'user_idx={USER_IDX} user_arg={user_arg} raw_output={RAW_OUTPUT}',
+                        f'u_idx={u_idx} chidden={CHIDDEN}')
+            if RAW_OUTPUT < 2:
+                kwargs = showusers(
+                    userdata, len(sys.argv) - RAW_OUTPUT - 1, user_arg, RAW_OUTPUT, u_idx, CHIDDEN, **kwargs
+                )
+            elif len(sys.argv) == 1:
+                kwargs = showusers(
+                    userdata, len(sys.argv) - 1, user_arg, RAW_OUTPUT, u_idx, CHIDDEN, **kwargs
+                )
+            elif RAW_OUTPUT == 3:
+                kwargs = showusers(
+                    userdata, len(sys.argv) - 2, user_arg, RAW_OUTPUT, u_idx, CHIDDEN, **kwargs
+                )
+            else:
+                kwargs = showusers(
+                    userdata, 0, user_arg, RAW_OUTPUT, u_idx, CHIDDEN, **kwargs
+                )
 
-        # user loop: unpack shm in 'buf' as py struct, loop over struct.iter (904 bytes)
-        #            make tuples in a list called 'userdata', skip if empty
-        for user_tuple in struct.iter_unpack(STRUCT_FMT, buf):
-            if struct_ONLINE._make(user_tuple).procid:
-                userdata.insert(u_idx, struct_ONLINE._make(user_tuple))
-                if user_action == 0:
-                    if debug > 2:
-                        print(f'DEBUG: user loop sys.argv={sys.argv} (len={len(sys.argv)})',
-                              f'user_idx={USER_IDX} user_arg={user_arg} raw_output={RAW_OUTPUT}',
-                              f'repeat={repeat} u_idx={u_idx} chidden={CHIDDEN}')
-                    if RAW_OUTPUT < 2:
-                        kwargs = showusers(
-                            userdata, len(sys.argv) - RAW_OUTPUT - 1, user_arg, RAW_OUTPUT, repeat, u_idx, CHIDDEN, **kwargs
-                        )
-                    elif len(sys.argv) == 1:
-                        kwargs = showusers(
-                            userdata, len(sys.argv) - 1, user_arg, RAW_OUTPUT, repeat, u_idx, CHIDDEN, **kwargs
-                        )
-                    elif RAW_OUTPUT == 3:
-                        kwargs = showusers(
-                            userdata, len(sys.argv) - 2, user_arg, RAW_OUTPUT, repeat, u_idx, CHIDDEN, **kwargs
-                        )
-                    else:
-                        kwargs = showusers(
-                            userdata, 0, user_arg, RAW_OUTPUT, repeat, u_idx, CHIDDEN, **kwargs
-                        )
+            u_idx += 1
 
-                u_idx += 1
+    # make sure we do not show geoip2 error msgs more than once
+    if geoip2_enable:
+        geoip2_shown_err = kwargs['geoip2_shown_err']
 
-                if _WITH_SPY and SPY_MODE:
-                    hdr_lines = layout['header'].count('\n')
-                    if ((u_idx * 3) + hdr_lines > os.get_terminal_size().lines and screen_redraw == 0):
-                        time.sleep(1)
-                        screen_redraw = 1
-
-        # make sure we do not show geoip2 error msgs more than once
-        if _WITH_SPY and geoip2_enable:
-            geoip2_shown_err = kwargs['geoip2_shown_err']
-
-        # show totals or single user stats
-        if user_action == 0:
-            if (len(sys.argv) == 1) or (RAW_OUTPUT == 3) or (_WITH_SPY and SPY_MODE) or (_WITH_XXL and XXL_MODE):
-                showtotals(RAW_OUTPUT, totalusers, **kwargs)
-                if not RAW_OUTPUT and not XXL_MODE:
-                    print(layout['footer'])
-            elif user_arg and not XXL_MODE:
-                u_found = False
-                arg_idx = 0
-                while arg_idx < len(userdata):
-                    if userdata[arg_idx].username.split(NULL_CHAR, 1)[0].decode() == user_arg:
-                        u_found = True
-                        break
-                    arg_idx += 1
-                if not u_found:
-                    if not RAW_OUTPUT:
-                        print(f"\002{user_arg}\002 is not online\n")
-                    else:
-                        print(f"\"ERROR\" \"User {user_arg} not online.\"\n")
-                    sys.exit(1)
-            if (_WITH_ALTWHO and not RAW_OUTPUT) or (_WITH_XXL and XXL_MODE):
-                print()
-
-        # spy-mode: handle keyboard input
-        if _WITH_SPY and SPY_MODE:
-            signal.signal(signal.SIGINT, spy_break)
-            if user_action == 0:
-                spy_usage(u_idx)
-            [ user_action, screen_redraw ] = spy_input_action(userdata, u_idx, user_action, screen_redraw)
-            if user_action == 0:
-                time.sleep(1)
-            elif _WITH_GEOIP and geoip2_enable:
-                time.sleep(2)
-
-        repeat += 1
+    # show totals or single user stats
+    if (len(sys.argv) == 1) or (RAW_OUTPUT == 3) or (_WITH_XXL and XXL_MODE):
+        showtotals(RAW_OUTPUT, totalusers, **kwargs)
+        if not RAW_OUTPUT and not XXL_MODE:
+            print(layout['footer'])
+    elif user_arg and not XXL_MODE:
+        u_found = False
+        arg_idx = 0
+        while arg_idx < len(userdata):
+            if userdata[arg_idx].username.split(NULL_CHAR, 1)[0].decode() == user_arg:
+                u_found = True
+                break
+            arg_idx += 1
+        if not u_found:
+            if not RAW_OUTPUT:
+                print(f"\002{user_arg}\002 is not online\n")
+            else:
+                print(f"\"ERROR\" \"User {user_arg} not online.\"\n")
+            sys.exit(1)
+    if (_WITH_ALTWHO and not RAW_OUTPUT) or (_WITH_XXL and XXL_MODE):
+        print()
 
     try:
         memory.detach()

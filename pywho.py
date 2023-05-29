@@ -405,11 +405,7 @@ def get_geocode(client, userip, shown_err):
             if (g_err.__class__.__name__ in ['AddressNotFoundError', 'reqOutOfQueriesError']) and shown_err == 0:
                 shown_err = 1
                 _m = f'Error: geoip2 {g_err.__class__.__name__} ({g_err})'
-                if _WITH_SPY and SPY_MODE:
-                    print("\n{msg:<80}\n".format(msg=_m))
-                    time.sleep(2.5)
-                    print(f"{cur('F',3)}{cur('0J')}{cur('F',1)}")
-                elif _WITH_XXL and XXL_MODE:
+                if _WITH_XXL and XXL_MODE:
                     print(_m, '\n')
                 else:
                     print('\n'.join(_.strip() for _ in re.findall(r'.{1,75}(?:\s+|$)', _m)))
@@ -426,9 +422,8 @@ def showusers(user, *args, **kwargs) -> dict:
     mode = args[0]
     ucomp = args[1]
     raw = args[2]
-    rep = args[3]
-    x = args[4]
-    chidden = args[5]
+    x = args[3]
+    chidden = args[4]
     downloads = kwargs['downloads']
     uploads = kwargs['uploads']
     total_up_speed = kwargs['total_up_speed']
@@ -438,24 +433,24 @@ def showusers(user, *args, **kwargs) -> dict:
     onlineusers = kwargs['onlineusers']
     geoip2_client = kwargs['geoip2_client']
     geoip2_shown_err = kwargs['geoip2_shown_err']
+    # convert 2 uint32 to uint64
+    bytes_xfer = user[x].bytes_xfer2 * pow(2, 32) + user[x].bytes_xfer1
 
-    #print(f'DEBUG: mode={mode} raw={raw}')
-
-    # NOTE:
-    #   to test total up/dn speed set vars like this:
-    #     uploads, downloads, total_up_speed, total_dn_speed = 10, 3, 18576, 8576   # 1048576 (1024*1024)
-    #   examples of 'status' output:
-    #     b'STOR filename'
-    #     b'LIST -al\x00partof-DIR\x003/0504/TEST2\x00/Foo-BAR/1'
-    #     b'RETR filename.rar\x00X/',
-    #     b'STAT'
-    #     b'PASV'
-    #     b'Connecting...'
-    # (OLD) glftpd 2.11: username = user[x].username.decode().split(NULL_CHAR, 1)[0]
+    # XXX: to test total up/dn speed set vars like this:
+    #        uploads, downloads, total_up_speed, total_dn_speed = 10, 3, 18576, 8576   # 1048576 (1024*1024)
+    #      examples of 'status' output:
+    #        b'STOR filename'
+    #        b'LIST -al\x00partof-DIR\x003/0504/TEST2\x00/Foo-BAR/1'
+    #        b'RETR filename.rar\x00X/',
+    #        b'STAT'
+    #        b'PASV'
+    #        b'Connecting...'
+    #      (OLD) glftpd 2.11: username = user[x].username.decode().split(NULL_CHAR, 1)[0]
 
     username = user[x].username.split(NULL_CHAR, 1)[0].decode()
     tagline = user[x].tagline.split(NULL_CHAR, 1)[0].decode()
     currentdir = user[x].currentdir.split(NULL_CHAR, 1)[0].decode()
+    # tagline = user[x].tagline.split(NULL_CHAR, 1)[0].decode()
     u_status = user[x].status.split(NULL_CHAR, 1)[0].decode()
     tstop_tv_sec = calendar.timegm(time.gmtime())
     tstop_tv_usec = datetime.datetime.now().microsecond
@@ -513,11 +508,11 @@ def showusers(user, *args, **kwargs) -> dict:
     #       user[x] = user[x]._replace(bytes_xfer1=150000)
 
     # ul speed
-    if (user[x].status[:5] == b'STOR ' or user[x].status[:5] == b'APPE ') and user[x].bytes_xfer1:
-        mb_xfered = abs(user[x].bytes_xfer1 / 1024 / 1024)
+    if (user[x].status[:5] == b'STOR ' or user[x].status[:5] == b'APPE ') and bytes_xfer:
+        mb_xfered = abs(bytes_xfer / 1024 / 1024)
         traf_dir = "Up"
         speed = abs(
-            user[x].bytes_xfer1 / 1024 / ((tstop_tv_sec - user[x].tstart_tv_sec) +
+            bytes_xfer / 1024 / ((tstop_tv_sec - user[x].tstart_tv_sec) +
             (tstop_tv_usec - user[x].tstart_tv_usec) / 1000000)
         )
         if (not noshow and not mask and maskchar != '*') or chidden:
@@ -527,23 +522,23 @@ def showusers(user, *args, **kwargs) -> dict:
             pct = -1
             p_bar = '?->'
     # dn speed
-    elif user[x].status[:5] == b'RETR ' and user[x].bytes_xfer1:
+    elif user[x].status[:5] == b'RETR ' and bytes_xfer:
         mb_xfered = 0
         traf_dir = "Dn"
         realfile = currentdir
         my_filesize = filesize(realfile)
-        if my_filesize < user[x].bytes_xfer1:
-            my_filesize = user[x].bytes_xfer1
+        if my_filesize < bytes_xfer:
+            my_filesize = bytes_xfer
         pct = abs(
-            user[x].bytes_xfer1 / my_filesize * 100
+            bytes_xfer / my_filesize * 100
         )
-        i = 15 * user[x].bytes_xfer1 / my_filesize
-        i = 15 if 1 > 15 else i
+        i = 15 * bytes_xfer / my_filesize
+        i = 15 if i > 15 else i
         # for _ in range(0, int(i)): p_bar += 'x'
         # x = 'x' * len(range(0, int(i)))
         p_bar = f"{'':x<{int(abs(i))}}"
         speed = abs(
-            user[x].bytes_xfer1 / 1024 / ((tstop_tv_sec - user[x].tstart_tv_sec) +
+            bytes_xfer / 1024 / ((tstop_tv_sec - user[x].tstart_tv_sec) +
             (tstop_tv_usec - user[x].tstart_tv_usec) / 1000000)
         )
         if (not noshow and not mask and maskchar != '*') or chidden:

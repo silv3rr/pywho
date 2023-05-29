@@ -22,10 +22,6 @@ import sys
 import socket
 import calendar
 import collections
-import signal
-import select
-import fcntl
-import tty
 import sysv_ipc
 
 VERSION = "20230512"
@@ -34,8 +30,7 @@ VERSION = "20230512"
 _WITH_ALTWHO = True
 _WITH_SS5 = False
 _WITH_GEOIP = False
-_WITH_SPY = True
-_WITH_XXL = False
+_WITH_XXL = True
 
 SCRIPT = os.path.basename(sys.argv[0])
 SCRIPTDIR = os.path.dirname(os.path.realpath((sys.argv[0])))
@@ -55,14 +50,14 @@ GEOIP2_BUF = {}
 GEOIP2_CLIENT = None
 
 GL_NOCOLOR = 0
-SPY_MODE = 0
 XXL_MODE = 0
+HTML_MODE=0
 
 
 # handle args
 ##############
 if '-h' in sys.argv or '--help' in sys.argv:
-    print(f'./{SCRIPTNAME} [--raw|-ss5|--nbw|--spy] [username]')
+    print(f'./{SCRIPTNAME} [--raw|-ss5|--nbw] [username]')
     sys.exit(0)
 elif '-v' in sys.argv or '--version' in sys.argv:
     ver = f"pypwho-{VERSION}"
@@ -70,8 +65,6 @@ elif '-v' in sys.argv or '--version' in sys.argv:
         ver += '-altwho'
     if _WITH_GEOIP:
         ver += '-geoip'
-    if _WITH_SPY:
-        ver += '-spy'
     if _WITH_XXL:
         ver += '-xxl'
     print(ver)
@@ -84,11 +77,8 @@ elif len(sys.argv) > 1 and len(sys.argv[1]) == 5:
     elif '--nbw' in sys.argv:
         USER_IDX, RAW_OUTPUT = 2, 3
     elif '--spy' in sys.argv:
-        if _WITH_SPY:
-            USER_IDX, RAW_OUTPUT = 0, 0
-            SPY_MODE = 1
-        else:
-            sys.exit(0)
+        print("Mode was moved to a separate tool called 'spy.py'")
+        sys.exit(0)
     elif '--xxl' in sys.argv:
         if _WITH_XXL:
             USER_IDX, RAW_OUTPUT = 2, 0
@@ -257,9 +247,7 @@ for k in layout_keys:
         except (KeyError, IOError) as t_err:
             print(f"File not found for theme '{k}' (error: {t_err})")
 
-# for spy and xxl modes get and replace theme keys
-if _WITH_SPY and SPY_MODE:
-    mode_list.append('spy')
+# for xxl mode get and replace theme keys
 if _WITH_XXL and XXL_MODE:
     mode_list.append('xxl')
 for m in mode_list:
@@ -275,7 +263,7 @@ for k in tmpl_str_keys:
     tmpl_str[k] = tmpl_str[k].encode().decode('unicode-escape')
 
 # strip colors from output if running from gl and '5' is not in FLAGS, or color=0, or xxlmode
-if (not SPY_MODE and GL_NOCOLOR == 1) or color == 0 or XXL_MODE:
+if color == 0 or XXL_MODE:
     re_esc = re.compile(r'(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]')
     for k in layout_keys:
         layout[k] = re_esc.sub('', layout[k])
@@ -285,50 +273,6 @@ if (not SPY_MODE and GL_NOCOLOR == 1) or color == 0 or XXL_MODE:
 
 # functions
 ############
-    
-def cur(loc, n=0):
-    """ return cursor control code """
-    return {
-        'H':    '\N{ESC}[H',
-        'A':    f'\N{ESC}[{n}A',
-        'C':    f'\N{ESC}[{n}C',
-        'F':    f'\N{ESC}[{n}F',
-        '0J':   '\N{ESC}[0J',
-        '2J':   '\N{ESC}[2J',
-    }[loc]
-
-
-def txt(mode):
-    """ return text mode or empty string if color is off """
-    if (not SPY_MODE and GL_NOCOLOR == 1) or color == 0 or XXL_MODE:
-        return ''
-    textmode = {
-        'r':    '\x1b[0m',
-        'b':    '\x1b[1m',
-        'u':    '\x1b[4m',
-        'bl':   '\x1b[5m',
-        'rb':   '\x1b[22m',
-    }
-    return textmode[mode]
-
-
-def col(fg, bg):
-    """ return color code or empty string if color is off """
-    if (not SPY_MODE and GL_NOCOLOR == 1) or color == 0 or XXL_MODE:
-        return ''
-    colnum = {
-        'k':    0,
-        'r':    1,
-        'g':    2,
-        'y':    3,
-        'b':    4,
-        'm':    5,
-        'c':    6,
-        'w':    7,
-        'd':    9        
-    }
-    return f'\x1b[1;{colnum[fg]+30};{colnum[bg]+40}m'
-
 
 def glconf_users():
     """ sum max_users from glftpd.conf """
@@ -414,10 +358,6 @@ def get_geocode(client, userip, shown_err):
 
 def showusers(user, *args, **kwargs) -> dict:
     """ output formatted user stats """
-    # TODO:
-    #print('DEBUG: FLASK_MODE =', FLASK_MODE)
-    #print('DEBUG: _WITH_SPY =', _WITH_SPY)
-    #print('DEBUG: SPY_MODE =', SPY_MODE)
     # set variables from function parameters
     mode = args[0]
     ucomp = args[1]
@@ -581,7 +521,7 @@ def showusers(user, *args, **kwargs) -> dict:
             status = '{}ld| {:.0f}'.format(traf_dir.lower(), speed)
 
     if debug > 0:
-        print(f'DEBUG: showusers mode={mode} ucomp={ucomp} raw={raw} rep={rep}',
+        print(f'DEBUG: showusers mode={mode} ucomp={ucomp} raw={raw}',
               f'username={username} x={x} hidden={chidden} showall={SHOWALL}'
               f'noshow={noshow} mask={mask} maskchar={maskchar}' )
 
@@ -684,50 +624,6 @@ def showusers(user, *args, **kwargs) -> dict:
         print()
         onlineusers += 1
 
-    # spymode: try to show as much useful info as possible..
-    elif _WITH_SPY and SPY_MODE:
-        # show pct/progessbar or currentdir on right side
-        if not pct and not p_bar:
-            pct_spy = ''
-        else:
-            pct_spy = f"{pct:>4.0f}%:"
-        if p_bar:
-            if p_bar == '?->':
-                p_bar_spy = f"{u_status[5:]:<22.22}" if (len(status) > 5) else f"{' ':<22.22}"
-            else:
-                p_bar_spy = f'{p_bar:<16.16s}'
-        else:
-            # show '-' to confirm (large) file is started
-            if pct > 0:
-                p_bar_spy = f"{'-':<16.16s}"
-            else:
-                p_bar_spy = f"{currentdir.replace('/site', ''):<22.22}"
-        info_spy = f'{pct_spy} {p_bar_spy}'
-        if mb_xfered:
-            print(string.Template(tmpl_str['upload']).substitute(tmpl_sub).format(
-                username=username, g_name=g_name, status=status, mb_xfered=mb_xfered
-            ))
-        else:
-            print(string.Template(tmpl_str['download']).substitute(tmpl_sub).format(
-                username=username, g_name=g_name, status=status, info_spy=info_spy
-            ))
-        # right side: switch between showing filename or status
-        if (u_status[:5] in ['RETR ', 'STOR ']):
-            fn_spy = f'file: {filename}'
-        elif (u_status[:5] in ['LIST ', 'STAT ', 'SITE ']) or (u_status == 'Connecting...') or (u_status[5:].startswith('-')):
-            fn_spy = u_status
-        else:
-            fn_spy = filename
-        # left side: show ip or tagline
-        if rep % 8 in range(0, 5):
-            print(string.Template(tmpl_str['info']).substitute(tmpl_sub).format(info="{:8.8s} {:>18.18s}".format(
-                tagline, userip if userip != '0.0.0.0' else addr), online=online, fn_spy=fn_spy
-            ))
-        else:
-            print(string.Template(tmpl_str['info']).substitute(tmpl_sub).format(info=tagline, online=online, fn_spy=fn_spy))
-        print(layout['separator'].format('', x=x))
-        onlineusers += 1
-
     return dict(
         downloads=downloads, uploads=uploads, total_up_speed=total_up_speed, total_dn_speed=total_dn_speed,
         browsers=browsers, idlers=idlers, onlineusers=onlineusers, geoip2_client=geoip2_client, geoip2_shown_err=geoip2_shown_err
@@ -757,14 +653,6 @@ def showtotals(*args, **kwargs):
     else:
         speed_unit = 'KB/s'
     if not raw:
-        # if _WITH_SPY and SPY_MODE:
-        #    print(string.Template(tmpl_str['totals']).substitute(tmpl_sub).format(
-        #        uploads=uploads, total_up_speed=total_up_speed, downloads=downloads, total_dn_speed=total_dn_speed,
-        #        total=uploads + downloads, total_speed=total_up_speed + total_dn_speed, unit=speed_unit
-        #    ))
-        #    print(string.Template(tmpl_str['users']).substitute(tmpl_sub).format(
-        #        space=' ', onlineusers=onlineusers, maxusers=totalusers)
-        #    )
         if _WITH_XXL and XXL_MODE:
             totals = string.Template(tmpl_str['totals']).substitute(tmpl_sub).format(
                 uploads=uploads, total_up_speed=total_up_speed, downloads=downloads, total_dn_speed=total_dn_speed,
@@ -794,244 +682,6 @@ def showtotals(*args, **kwargs):
             total=uploads + downloads, total_speed=total_up_speed + total_dn_speed,
             browsers=browsers, idlers=idlers, onlineusers=onlineusers, maxusers=totalusers
         ))
-
-
-def spy_break(signal_received, frame):
-    # pylint: disable=unused-argument
-    """ handle ctrl-c break """
-    os.system("stty sane")    
-    print(f'\n{"Exiting py-who spy mode...":<80}\n')
-    if _WITH_GEOIP and geoip2_enable:
-        GEOIP2_CLIENT.close()
-    sys.exit(0)
-
-# TODO: add 'h' help popup instead of the lines at bottom?
-#       add 'v' to view first user
-#       add popup prompts? e.g. 'k':  [ Kill user: ____ ]
-#       or move 'k' to userinfo? 'k' = kick selected user
-
-def spy_usage(u_idx):
-    """ show usage text and user input prompt """
-    u_range = '<num>'
-    if u_idx == 1:
-        u_range = '0'
-    elif u_idx > 1:
-        u_range = f'0-{u_idx-1}'
-    print("> To view user info use '{ur}' or 'k <num>' to kick a user (needs root)\n"
-          "> To quit press 'q' (or {b}CTRL-C{rb}) ... "
-          "Type [{kw}{ur}{r} or {kw}k {ur}{r} or {kw}q{r}] then {kw}ENTER{r}:".format(
-            ur=u_range, b=f"{txt('b')}", rb=f"{txt('rb')}", r=f"{txt('r')}", kw=f"{col('k','w')}"
-    ))
-    print(f"{col('k','w')}{txt('bl')}__{txt('r')}{col('k','w')}_{txt('r')}", end="")
-    print(f"{cur('A',1)}{cur('C',3)}")
-    
-    
-def userinfo(userfile, user, stdin_string):
-    """ show user details """
-    print(layout['header'])
-    i = 0
-    while i < len(user):
-        if user[i].username == user[int(stdin_string)].username:
-            u_next = i + 1 if (i+1) < len(user) else 0
-            u_prev = i - 1 if (i-1) < len(user) else 0
-            tls_msg = tls_mode[user[i].ssl_flag] if user[i].ssl_flag in range(0, len(tls_mode)) else 'UNKNOWN'
-            print(f"  {txt('u')}LOGIN{txt('r')} [#{i}]:")
-            print(f"    Username: '{txt('b')}{user[i].username.split(NULL_CHAR, 1)[0].decode()}{txt('r')}'")
-            print(f'    PID: {user[i].procid}  SSL: {tls_msg}')
-            print(f'    RHost: {user[i].host.split(NULL_CHAR, 1)[0].decode()}')
-            print(f'    Tagline: {user[i].tagline.split(NULL_CHAR, 1)[0].decode()}')
-            print(f'    Currentdir: {user[i].currentdir.split(NULL_CHAR, 1)[0].decode()}')
-            print(f'    Status: {user[i].status.split(NULL_CHAR, 1)[0].decode()}')
-        i += 1
-    if color == 0:
-        print(default['separator'])
-    else:
-        print("{mcolor}{separator}{r}".format(
-            mcolor=config.get('THEME', 'spy_mcolor'), separator=default['separator'], r=txt('r')
-        ).encode().decode('unicode-escape'))
-    print(f"  {txt('u')}USERFILE{txt('r')}:")
-    for line in userfile:
-        for field in ['FLAGS', 'CREDITS', 'IP']:
-            if field in line:
-                if line.startswith('CREDITS'):
-                    c = re.sub(r'^CREDITS ([^0]\d+).*', r'\1', line)
-                    print("{:>4.4}CREDITS: {} GB\n".format(' ', round(int(c)/1024**2)), end="")
-                else:
-                        print(f"{' ':>4.4}{line.strip()}")
-    print(layout['footer'])
-    return u_next, u_prev
-
-
-def get_key(user, u_idx, user_action, screen_redraw, **kwargs):
-    #print(f'DEBUG: get_key user_action={user_action}')
-    #time.sleep(2)
-    tty.setcbreak(sys.stdin.fileno())
-    if select.select([sys.stdin], [], [], 0.5) == ([sys.stdin], [], []):
-        k = sys.stdin.read(1)
-        un = None
-        up = None
-        print(f'DEBUG: get_key k={k}')
-        #time.sleep(1)
-        if k in ['q', 'q']:
-            user_action = 0
-            screen_redraw =  0
-            os.system("stty sane")
-        elif k in ['n', 'N']:                
-            user_action = 1
-            screen_redraw =  1
-            un = kwargs.get('u_next')
-        elif k in ['p', 'P']:
-            user_action = 1
-            screen_redraw =  1
-            up = kwargs.get('u_prev')
-        elif k in ['h', 'H']:
-            user_action = 3
-            screen_redraw =  0
-        # TODO: quit on ESC on first screen or back to main from userinfo
-        elif k == '\N{ESC}' and user_action == 0:
-            os.system("stty sane")
-            user_action = 0
-            screen_redraw = 0            
-        elif k == '\N{ESC}':
-            return True
-        elif k and user_action == 3:
-            return True
-
-        # TODO: make sure we always call stty sane before exit
-        #os.system("stty sane")
-        #break
-        spy_input_action(user, u_idx, user_action, screen_redraw, key=k, u_next=un, u_prev=up)
-
-
-# TODO: complex function, refactor?
-def spy_input_action(user, u_idx, user_action, screen_redraw, **kwargs):
-    """ get user input and run action after ENTER """
-
-    stdin_string = ""
-    u_next = ""
-    u_prev = ""
-
-    print('DEBUG: spy_input_action kwargs', kwargs)
-    if kwargs:
-        if (type(kwargs.get('u_next')) == int):
-            u_next = str(kwargs['u_next'])
-            stdin_string = u_next
-        elif (type(kwargs.get('u_prev')) == int):
-            u_prev = str(kwargs['u_prev'])
-            stdin_string = u_prev
-        else:
-            stdin_string = kwargs.get('key')        
-    #else:
-    #    orig_fl = fcntl.fcntl(sys.stdin, fcntl.F_GETFL)
-    #    fcntl.fcntl(sys.stdin, fcntl.F_SETFL, orig_fl | os.O_NONBLOCK)
-    #    stdin_string = sys.stdin.read(5)
-        
-    get_key(user, u_idx, user_action, screen_redraw)
-    print(f'DEBUG: spy_input_action stdin_string={stdin_string} u_next={u_next} u_prev={u_prev}')
-
-    # TODO: add ESC to quit
-    #       fix wrong key response 'User not found or invalid option ...' (first time)
-    #       slow reponse to key (sleep)
-
-    # action: quit
-    if stdin_string.rstrip() in ['q', 'Q']:
-        os.system("stty sane")
-        print(f'{" ":<80}\n{"Exiting py-who spy mode...":<80}\n')
-        sys.exit(0)
-
-    # action: userinfo
-    if (stdin_string[:2].strip().isdigit() and int(stdin_string[:2].strip()) in range(0, u_idx)):
-        user_action = 1
-        #stdin_string = str(u_next) if u_next else stdin_string
-        print('DEBUG: userinfo ', user_action, stdin_string)
-        u_name = user[int(stdin_string.strip())].username.split(NULL_CHAR, 1)[0].decode()
-        try:
-            with open(f'{glrootpath}/ftp-data/users/{u_name}', 'r', encoding='utf-8', errors='ignore') as ufile:
-                userfile = ufile.readlines()
-        except IOError:
-            try:
-                with open(f'/ftp-data/users/{u_name}', 'r', encoding='utf-8', errors='ignore') as chr_ufile:
-                    userfile = chr_ufile.readlines()
-            except IOError:
-                pass
-        try:
-            userfile
-        except KeyError:
-            print("{_m:<80}".format(
-                _m=f" User '{u_name}' not found...")    
-            )
-            time.sleep(2)
-        else:
-            print(f"{cur('2J')}{cur('H')}")
-            [ u_next, u_prev ] = userinfo(userfile, user, stdin_string)
-            # wait for user to press ENTER
-            j = 0
-            fill = '.'
-            while not get_key(user, u_idx, user_action, screen_redraw, u_next=u_next, u_prev=u_prev):
-                pad = ' ' * (3-j)
-                j = 0 if j > 3 else j
-                progress = '{:{fill}<{width}}'.format(
-                    '', fill=fill, width=int(j)
-                )
-                _m  = f"  > Press {col('k','w')}n{txt('r')} to view next login [#{u_next}], {col('k','w')}p{txt('r')} for previous " \
-                      f"or {col('k','w')}ESC{txt('r')} to go back "
-                print("{}{}{}".format(_m, progress, pad), end="")
-                print(f"{cur('A', 1)}")
-                j += 1
-                #u_next += 1
-
-            os.system("stty sane")
-            screen_redraw = 1
-
-    # action: kill user
-    elif (stdin_string.rstrip().startswith('k')):
-        user_action = 2
-        screen_redraw = 1
-        stdin_string = re.split(r'k\s?', stdin_string.rstrip())[1]
-        if stdin_string.isdigit() and int(stdin_string) in range(0, u_idx):
-            user_pid = user[int(stdin_string)].procid
-            if os.popen(f'ps --no-headers -o comm -p {user_pid}').read().strip() == 'glftpd':
-                print(f"{' ':<80}")
-                try:
-                    os.kill(int(user_pid), 15)
-                    print("{_m:<80}".format(
-                        _m=f"Killed PID '{user_pid}' ...")
-                    )
-                    time.sleep(2)
-                except OSError as k_err:
-                    print("{_m:<80}".format(
-                        _m=f'Error: kill user {k_err}')
-                    )
-                    time.sleep(3)
-                print("{_m:<80}".format(_m=' '))
-        print(f"{cur('2J')}{cur('H')}")
-
-    # show help
-    elif user_action == 3:
-        print(f"{cur('A',15)}{cur('C',10)}")
-        print(f"{col('k','b')}{' '*30}Help{' '*30}")
-        print(f"{col('k','b')}  Bla bla bla bla bla{' '*43}")
-        print(f"{col('k','b')}{' '*64}{txt('r')}")
-        while not get_key(user, u_idx, user_action, screen_redraw):
-            time.sleep(0.1)
-        #print(f"{cur('2J')}")
-        user_action = 3
-        screen_redraw = 1
-
-    # handle any other key presses
-    elif user_action == 0 and len(stdin_string) > 0:
-        if get_key(user, u_idx, user_action, screen_redraw):
-            user_action = 9
-            screen_redraw = 1
-        else:
-            print(f"{' ':<80}")
-            print(f'{"":>4.4}{"User not found or invalid option ...":<76}')
-            print(f"{' ':<80}")
-            time.sleep(1)
-    else:
-        user_action = 0
-    stdin_string = ''
-    return [user_action, screen_redraw]
 
 
 # main
@@ -1197,10 +847,10 @@ def main():
         pass
     if _WITH_GEOIP and geoip2_enable:
         GEOIP2_CLIENT.close()
-    os.system("stty sane")
     sys.exit(0)
 
 if __name__ == "__main__":
     main()
+
 
 # fuquallkthnxbye.

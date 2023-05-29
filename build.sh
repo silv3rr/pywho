@@ -1,6 +1,7 @@
 #!/bin/sh
 
-# ./build.sh _WITH_ALTWHO _WITH_SPY _WITH_GEOIP _WITH_XXL
+# Usage:
+#   ./build.sh _WITH_ALTWHO _WITH_GEOIP _WITH_XXL
 
 # Required: Python 3.7.3+, sysv-ipc, pyinstaller
 #   python3 -m venv venv && . venv/bin/activate && \
@@ -14,7 +15,7 @@ PYINSTALLER=1
 PACK=1
 REQS="$(cut -d= -f1 requirements.txt 2>/dev/null)"
 ARGS="--hidden-import sysv_ipc"
-OPTS="_WITH_ALTWHO _WITH_SS5 _WITH_SPY _WITH_GEOIP _WITH_XXL"
+OPTS="_WITH_ALTWHO _WITH_SS5 _WITH_GEOIP _WITH_XXL"
 
 if [ ! -s requirements.txt ] || [ -z "$REQS" ]; then
   echo "WARNING: missing requirements"

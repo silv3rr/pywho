@@ -142,3 +142,5 @@ dmypy.json
 *.spec
 *.tar.gz
 *.sha512sum
+*.spec
+*.html

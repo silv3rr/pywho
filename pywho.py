@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# pylint: disable=line-too-long, consider-using-f-string
+# pylint: disable=line-too-long, consider-using-f-string, c-extension-no-member
 
 """
 ################################################################################
@@ -24,7 +24,7 @@ import calendar
 import collections
 import sysv_ipc
 
-VERSION = "20230512"
+VERSION = "20230603"
 
 # vars used like #ifdef's in orig sitewho.c
 _WITH_ALTWHO = True
@@ -85,6 +85,9 @@ elif len(sys.argv) > 1 and len(sys.argv[1]) == 5:
             XXL_MODE = 1
         else:
             sys.exit(0)
+    elif '--htm' in sys.argv:
+        USER_IDX, RAW_OUTPUT = 2, 0
+        HTML_MODE = 1
 else:
     if len(sys.argv) > 1 and sys.argv[1][0] == '-':
         print("Error: invalid option, try '-h'\n")
@@ -96,28 +99,28 @@ else:
 
 CONFIGFILE = f'{SCRIPTDIR}/{SCRIPTNAME}.conf'
 config = configparser.ConfigParser()
-file_errors = []
-for cfg in set([CONFIGFILE, f'{SCRIPTDIR}/pywho.conf']):
+cfg_errors = []
+for cfg_path in set([CONFIGFILE, f'{SCRIPTDIR}/pywho.conf']):
     try:
-        with open(cfg, 'r', encoding='utf-8', errors='ignore') as f:
-            config.read_string("[DEFAULT]\n" + f.read())
-    except IOError as cf_err:
-        file_errors.append(cf_err)
-if len(file_errors) > 0:
-    for f_err in file_errors:
-        print(f_err)
+        with open(cfg_path, 'r', encoding='utf-8', errors='ignore') as cfg_file:
+            config.read_string("[DEFAULT]\n" + cfg_file.read())
+    except IOError as cfg_err:
+        cfg_errors.append(cfg_err)
+if len(cfg_errors) > 0:
+    for cfg_err in cfg_errors:
+        print(cfg_err)
     print('Error: opening config file')
     sys.exit(1)
 
-layout = {}
-tmpl_str = {}
-tmpl_sub = {}
-default = {
-    'header':       ".-[PY-WHO]--------------------------------------------------------------.",
-    'footer':       "`------------------------------------------------------------[PY-WHO]---'",
-    'separator':    " -----------------------------------------------------------------------"
+LAYOUT = {}
+TMPL_STR = {}
+TMPL_SUB = {}
+DEFAULT = {
+    'header':       ".-[SPY.PY]--------------------------------------------------------------.",
+    'footer':       "`------------------------------------------------------------[SPY.PY]---'",
+    'separator':    " -----------------------------------------------------------------------",
 }
-tls_mode = [
+TLS_MODE = [
     0, 'None',       # no ssl
     1, 'Control',    # ssl on control
     2, 'Both'        # ssl on control and data
@@ -140,21 +143,20 @@ try:
     threshold = config.getint('DEFAULT', 'speed_threshold', fallback=1024)
     color = config.getint('DEFAULT', 'color', fallback=1)
     debug = config.getint('DEFAULT', 'debug', fallback=0)
-    geoip2_enable = config.getboolean('GEOIP', 'geoip2_enable', fallback=False)
+    GEOIP2_ENABLE = config.getboolean('GEOIP', 'geoip2_enable', fallback=False)
     geoip2_accountid = config['GEOIP']['geoip2_accountid']
     geoip2_licensekey = config['GEOIP']['geoip2_licensekey']
     geoip2_proxy = config.get('GEOIP', 'geoip2_proxy', fallback=None)
-    layout['header'] = config.get('THEME', 'header', fallback=default['header'])
-    layout['footer'] = config.get('THEME', 'footer', fallback=default['footer'])
-    layout['separator'] = config.get('THEME', 'separator', fallback=default['separator'])
-    tmpl_str['upload'] = config['THEME']['template_upload']
-    tmpl_str['download'] = config['THEME']['template_download']
-    tmpl_str['info'] = config['THEME']['template_info']
-    tmpl_str['totals'] = config['THEME']['template_totals']
-    tmpl_str['users'] = config['THEME']['template_users']
-    tmpl_sub['hrchar'] = config.get('THEME', 'hrchar', fallback=':')
-    tmpl_sub['delimiter'] = config.get('THEME', 'delimiter', fallback='|')
-    emoji = config.getboolean('THEME', 'emoji', fallback=False)
+    LAYOUT['header'] = config.get('THEME', 'header', fallback=DEFAULT['header'])
+    LAYOUT['footer'] = config.get('THEME', 'footer', fallback=DEFAULT['footer'])
+    LAYOUT['separator'] = config.get('THEME', 'separator', fallback=DEFAULT['separator'])
+    TMPL_STR['upload'] = config['THEME']['template_upload']
+    TMPL_STR['download'] = config['THEME']['template_download']
+    TMPL_STR['info'] = config['THEME']['template_info']
+    TMPL_STR['totals'] = config['THEME']['template_totals']
+    TMPL_STR['users'] = config['THEME']['template_users']
+    TMPL_SUB['hrchar'] = config.get('THEME', 'hrchar', fallback=':')
+    TMPL_SUB['delimiter'] = config.get('THEME', 'delimiter', fallback='|')
 except (KeyError, configparser.InterpolationError) as conf_err:
     print(f'ERROR: check config file\n{conf_err}')
     sys.exit(1)
@@ -169,14 +171,13 @@ MAXUSERS = maxusers if maxusers else 0
 # shm and struct (default ipc_key: 0x0000dead=57005)
 IPC_KEY = ipc_key if ipc_key else "0x0000DEAD"
 KEY = int(IPC_KEY, 16)
-# NULL_CHAR = '\0'
 NULL_CHAR = b'\x00'
 if debug > 3:
     print(f"DEBUG:\tIPC_KEY={IPC_KEY} KEY={KEY} sysv_ipc.SHM_RDONLY={sysv_ipc.SHM_RDONLY}\n",
           f'\tfmt = {KEY:#010x}', id(KEY))
 
 # converted from structonline.h and arranged like struct_ONLINE below:
-# tag(64s) username(24s) status(h) ... procid(i)
+# tag(64s), username(24s), status(h) <...> procid(i)
 STRUCT_FMT = ' \
   64s  24s  256s  h  256s  256s  i  i  \
   2i \
@@ -218,7 +219,7 @@ except IOError:
 # geoip
 ########
 
-if _WITH_GEOIP and geoip2_enable:
+if _WITH_GEOIP and GEOIP2_ENABLE:
     import geoip2.webservice
     GEOIP2_CLIENT = geoip2.webservice.Client(
         geoip2_accountid,
@@ -230,45 +231,42 @@ if _WITH_GEOIP and geoip2_enable:
 # theme
 ########
 
-mode_list = []
 layout_keys   = ['header', 'footer', 'separator']
 tmpl_str_keys = ['upload', 'download', 'info', 'totals', 'users']
 
 # try config keys 'header' and 'footer' etc first, fallback to header/footerfile
-for k in layout_keys:
+for theme_key in layout_keys:
     try:
-        layout[k]
+        LAYOUT[theme_key]
     except KeyError as e:
         print(f"Theme setting not found, trying file instead... (error: {e})")
         try:
-            tf = config.get('DEFAULT', f'{k}file')
-            with open(f'{glrootpath}{tf}', 'r', encoding='utf-8', errors='ignore') as f:
-                layout[k] = f.read().strip()
+            tf_name = config.get('DEFAULT', f'{theme_key}file')
+            with open(f'{glrootpath}{tf_name}', 'r', encoding='utf-8', errors='ignore') as t_file:
+                LAYOUT[theme_key] = t_file.read().strip()
         except (KeyError, IOError) as t_err:
-            print(f"File not found for theme '{k}' (error: {t_err})")
+            print(f"File not found for theme '{theme_key}' (error: {t_err})")
 
 # for xxl mode get and replace theme keys
 if _WITH_XXL and XXL_MODE:
-    mode_list.append('xxl')
-for m in mode_list:
-    for k in layout_keys:
-        layout[k] = config.get('THEME', f'{m}_{k}', fallback=default[k])
-    for k in tmpl_str_keys:
-        tmpl_str[k] = config.get('THEME', f'template_{m}_{k}', fallback=config['THEME'][f'template_{k}'])
+    for theme_key in layout_keys:
+        LAYOUT[theme_key] = config.get('THEME', f'xxl_{theme_key}', fallback=DEFAULT[theme_key])
+    for theme_key in tmpl_str_keys:
+        TMPL_STR[theme_key] = config.get('THEME', f'template_xxl_{theme_key}', fallback=config['THEME'][f'template_{theme_key}'])
 
 # use unicode for layout and template keys to make sure we output ansi escapes
-for k in layout_keys:
-    layout[k] = layout[k].encode().decode('unicode-escape')
-for k in tmpl_str_keys:
-    tmpl_str[k] = tmpl_str[k].encode().decode('unicode-escape')
+for theme_key in layout_keys:
+    LAYOUT[theme_key] = LAYOUT[theme_key].encode().decode('unicode-escape')
+for theme_key in tmpl_str_keys:
+    TMPL_STR[theme_key] = TMPL_STR[theme_key].encode().decode('unicode-escape')
 
 # strip colors from output if running from gl and '5' is not in FLAGS, or color=0, or xxlmode
-if color == 0 or XXL_MODE:
+if color == 0 or GL_NOCOLOR or XXL_MODE:
     re_esc = re.compile(r'(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]')
-    for k in layout_keys:
-        layout[k] = re_esc.sub('', layout[k])
-    for k in tmpl_str_keys:
-        tmpl_str[k] = re_esc.sub('', tmpl_str[k])
+    for theme_key in layout_keys:
+        LAYOUT[theme_key] = re_esc.sub('', LAYOUT[theme_key])
+    for theme_key in tmpl_str_keys:
+        TMPL_STR[theme_key] = re_esc.sub('', TMPL_STR[theme_key])
 
 
 # functions
@@ -276,18 +274,18 @@ if color == 0 or XXL_MODE:
 
 def glconf_users():
     """ sum max_users from glftpd.conf """
-    u_cnt = 0
-    for cfg_fname in [f'{glrootpath}/../glftpd.conf', f'{glrootpath}/glftpd.conf', '/etc/glftpd.conf']:
+    glconf_max = 0
+    for glconf_fname in [f'{glrootpath}/../glftpd.conf', f'{glrootpath}/glftpd.conf', '/etc/glftpd.conf']:
         try:
-            with open(cfg_fname, 'r', encoding='utf-8', errors='ignore') as cf:
-                for line in cf.readlines():
-                    if re.search(r'^max_users \d', line):
-                        for i in line.split()[1:]:
-                            u_cnt += int(i)
+            with open(glconf_fname, 'r', encoding='utf-8', errors='ignore') as glconf:
+                for glconf_line in glconf.readlines():
+                    if re.search(r'^max_users \d', glconf_line):
+                        for mu_cnt in glconf_line.split()[1:]:
+                            glconf_max += int(mu_cnt)
                         break
         except IOError:
             pass
-    return u_cnt
+    return glconf_max
 
 
 def get_group(gid):
@@ -320,21 +318,20 @@ def filesize(filename):
             pass
     return 0
 
-def cprint(message):
-    """ format max columns """
-    print("{msg:<{col}.{col}}".format(
-        msg=message, col=os.get_terminal_size().columns)
-    )
+
+def fmt_max_col(message):
+    """ format string msg with max columns """
+    return "{0:<{1}.{1}}".format(message, os.get_terminal_size().columns)
 
 
 def get_geocode(client, userip, shown_err):
     """ get geoip2 country code for ip """
     iso_code = "xX"
     if debug > 0:
-        for _ in ['127.', '10.', '172.16.1', '172.16.2', '172.16.3', '192.168.']:
-            if userip.startswith(_):
+        for prefix in ['127.', '10.', '172.16.1', '172.16.2', '172.16.3', '192.168.']:
+            if userip.startswith(prefix):
                 if debug > 3:
-                    print(f'DEBUG: geoip2 MATCH {_} in {userip}')
+                    print(f'DEBUG: geoip2 MATCH {prefix} in {userip}')
                 return [ client, 'DEBUG', shown_err ]
     if GEOIP2_BUF.get(userip):
         iso_code = GEOIP2_BUF[userip]
@@ -356,6 +353,57 @@ def get_geocode(client, userip, shown_err):
     return [ client, iso_code, shown_err ]
 
 
+def fmt_html(userdata, totalusers, **kwargs):
+    """ return string with users/totals as html """
+    html = "<h3>PY-WHO</h3><br>\n"
+    for user in userdata:
+        bytes_xfer = user.bytes_xfer2 * pow(2, 32) + user.bytes_xfer1
+        tstop_tv_sec = calendar.timegm(time.gmtime())
+        tstop_tv_usec = datetime.datetime.now().microsecond
+        speed = abs(
+            bytes_xfer / 1024 / ((tstop_tv_sec - user.tstart_tv_sec) +
+            (tstop_tv_usec - user.tstart_tv_usec) / 1000000)
+        )
+        status = ""
+        if bytes_xfer and (user.status[:5] == b'STOR ' or user.status[:5] == b'APPE '):
+            status = f"Up {speed/1024:.1f}MB/s"
+        elif bytes_xfer and user.status[:5] == b'RETR ':
+            status = f"Down {speed/1024:.1f}MB/s"
+        else:
+            seconds = tstop_tv_sec - user.tstart_tv_sec
+            status = 'Idle {}'.format(time.strftime("%H:%M:%S", time.gmtime(seconds)))
+        html += f'{user.username.split(NULL_CHAR, 1)[0].decode()}/{get_group(user.groupid)}<br>\n'
+        html += f'tagline: "{user.tagline.split(NULL_CHAR, 1)[0].decode()}"<br>\n'
+        html += f'host: {user.host.split(NULL_CHAR, 1)[0].decode()}<br>\n'
+        html += f'status: {status}<br><br>\n\n'
+    total = kwargs.get('uploads') + kwargs.get('downloads')
+    total_speed = kwargs.get('total_up_speed') + kwargs.get('total_dn_speed')
+    html += "<hr><br>\n"
+    html +=f"currently {kwargs.get('onlineusers')} users of {totalusers} users online<br>\n"
+    html +=f"up: {kwargs.get('uploads')}@{kwargs.get('total_up_speed')/1024:.1f}MB/s, "
+    html +=f"down: {kwargs.get('downloads')}@{kwargs.get('total_dn_speed')/1024:.1f}MB/s, "
+    html +=f"total: {total}@{total_speed/1024:.1f}MB/s<br>\n"
+    html +=f"{kwargs.get('browsers')} browser(s), {kwargs.get('idlers')} idler(s)<br>\n"
+    return html
+
+
+def write_html(userdata, totalusers, **kwargs):
+    """write html file and exit """
+    print("Writing output to pywho.html...")
+    with open("pywho.html", 'w', encoding='utf-8', errors='ignore') as html_file:
+        html_file.write('<!DOCTYPE html><html lang="en">\n')
+        html_file.write('<head>\n')
+        html_file.write('   <title>pywho</title>\n')
+        html_file.write('   <style>\n')
+        html_file.write("       html { font-family: 'Courier New', monospace; }\n")
+        html_file.write('   </style>\n')
+        html_file.write('</head>\n')
+        html_file.write('<body>\n')
+        html_file.write(fmt_html(userdata, totalusers, **kwargs))
+        html_file.write('</body></html>\n')
+        sys.exit(0)
+
+
 def showusers(user, *args, **kwargs) -> dict:
     """ output formatted user stats """
     # set variables from function parameters
@@ -373,19 +421,21 @@ def showusers(user, *args, **kwargs) -> dict:
     onlineusers = kwargs['onlineusers']
     geoip2_client = kwargs['geoip2_client']
     geoip2_shown_err = kwargs['geoip2_shown_err']
+    iso_code = ""
     # convert 2 uint32 to uint64
     bytes_xfer = user[x].bytes_xfer2 * pow(2, 32) + user[x].bytes_xfer1
 
-    # XXX: to test total up/dn speed set vars like this:
-    #        uploads, downloads, total_up_speed, total_dn_speed = 10, 3, 18576, 8576   # 1048576 (1024*1024)
-    #      examples of 'status' output:
-    #        b'STOR filename'
-    #        b'LIST -al\x00partof-DIR\x003/0504/TEST2\x00/Foo-BAR/1'
-    #        b'RETR filename.rar\x00X/',
-    #        b'STAT'
-    #        b'PASV'
-    #        b'Connecting...'
-    #      (OLD) glftpd 2.11: username = user[x].username.decode().split(NULL_CHAR, 1)[0]
+    # to test total up/dn speed set vars like this:
+    #   uploads, downloads, total_up_speed, total_dn_speed = 10, 3, 18576, 8576   # 1048576 (1024*1024)
+    # examples of 'status' output:
+    #   b'STOR filename'
+    #   b'LIST -al\x00partof-DIR\x003/0504/TEST2\x00/Foo-BAR/1'
+    #   b'RETR filename.rar\x00X/',
+    #   b'STAT'
+    #   b'PASV'
+    #   b'Connecting...'
+
+    # (OLD) glftpd 2.11: username = user[x].username.decode().split(NULL_CHAR, 1)[0]
 
     username = user[x].username.split(NULL_CHAR, 1)[0].decode()
     tagline = user[x].tagline.split(NULL_CHAR, 1)[0].decode()
@@ -440,12 +490,12 @@ def showusers(user, *args, **kwargs) -> dict:
             else:
                 mask += 1
 
-    if _WITH_GEOIP and geoip2_enable:
+    if _WITH_GEOIP and GEOIP2_ENABLE:
         (geoip2_client, iso_code, geoip2_shown_err) = get_geocode(geoip2_client, userip, geoip2_shown_err)
         userip = f'{userip} {iso_code}' if (userip and iso_code) else userip
 
-    # NOTE: when testing bytes_xfer1, use replace since namedtuple is immutable:
-    #       user[x] = user[x]._replace(bytes_xfer1=150000)
+    # when testing bytes_xfer1, use replace since namedtuple is immutable:
+    #   user[x] = user[x]._replace(bytes_xfer1=150000)
 
     # ul speed
     if (user[x].status[:5] == b'STOR ' or user[x].status[:5] == b'APPE ') and bytes_xfer:
@@ -497,11 +547,11 @@ def showusers(user, *args, **kwargs) -> dict:
         if not raw:
             status = 'Idle: {:>9.9}'.format(time.strftime("%H:%M:%S", time.gmtime(seconds)))
         elif raw == 1:
-            status = '"ID" {}'.format(time.strftime("%S", time.gmtime(seconds)))
+            status = '"ID" "{}"'.format(time.strftime("%S", time.gmtime(seconds)))
         else:
             status = 'idle|{}'.format(time.strftime("%H|%M|%S", time.gmtime(seconds)))
 
-    user.online = '{}'.format(time.strftime("%H:%M:%S", time.gmtime(tstop_tv_sec - user[x].login_time)))
+    online = '{}'.format(time.strftime("%H:%M:%S", time.gmtime(tstop_tv_sec - user[x].login_time)))
 
     # format both Up/Dn speed to KB/s MB/s GB/s
     if speed and (traf_dir == "Up" or traf_dir == "Dn"):
@@ -516,7 +566,7 @@ def showusers(user, *args, **kwargs) -> dict:
             else:
                 status = '{}: {:7.0f}KB/s'.format(traf_dir, speed)
         elif raw == 1:
-            status = '"{}" {:.0f}'.format(traf_dir.upper(), speed)
+            status = '{} {:.0f}'.format(traf_dir.upper(), speed)
         else:
             status = '{}ld| {:.0f}'.format(traf_dir.lower(), speed)
 
@@ -529,21 +579,22 @@ def showusers(user, *args, **kwargs) -> dict:
     if mode == 0 and raw != 3:
         if raw == 0 and (SHOWALL or (not noshow and not mask and maskchar != '*')):
             if mb_xfered:
-                print(string.Template(tmpl_str['upload']).substitute(tmpl_sub).format(
+                print(string.Template(TMPL_STR['upload']).substitute(TMPL_SUB).format(
                     maskchar=maskchar, username=username, g_name=g_name, status=status, mb_xfered=mb_xfered
                 ))
             else:
-                print(string.Template(tmpl_str['download']).substitute(tmpl_sub).format(
+                print(string.Template(TMPL_STR['download']).substitute(TMPL_SUB).format(
                     maskchar=maskchar, username=username, g_name=g_name, status=status, pct=pct, bar=p_bar
                 ))
-            print(string.Template(tmpl_str['info']).substitute(tmpl_sub).format(
+            print(string.Template(TMPL_STR['info']).substitute(TMPL_SUB).format(
                 tagline=tagline, userip=userip if userip != '0.0.0.0' else addr,  online=online, filename=filename
             ))
-            print(layout['separator'])
+            print(LAYOUT['separator'])
         elif (raw == 1 and (SHOWALL or (not noshow and not mask and maskchar != '*'))):
-            print('"USER" "{username}" "{g_name}" "{status}" "{tagline}" "{online}" "{filename}" "{mb_xfered}" "{currentdir}" "{procid}" "{host}" "{iso_code}" "{userip}"'.format(
+            print('"USER" "{username}" "{g_name}" {status} "{tagline}" "{online}" "{filename}" "{mb_xfered:.1f}{unit}" "{currentdir}" "{procid}" "{host}" "{iso_code}" "{userip}"'.format(
                 username=username, g_name=g_name, status=status, tagline=tagline, online=online, filename=filename,
-                mb_xfered=mb_xfered, currentdir=currentdir, procid=user[x].procid, host=host, iso_code=iso_code, userip=userip
+                mb_xfered=(pct if pct >= 0 else mb_xfered), unit=("%" if pct >= 0 else "MB"),
+                currentdir=currentdir, procid=user[x].procid, host=host, iso_code=iso_code, userip=userip
             ))
         elif (SHOWALL or (not noshow and not mask and maskchar != '*')):
             print("{}|{}|{}|{}|{}".format(username, g_name, tagline, status, filename))
@@ -594,7 +645,6 @@ def showusers(user, *args, **kwargs) -> dict:
         if (not noshow and not mask and maskchar != '*') or chidden:
             onlineusers += 1
         filename = ""
-
     # xxl_mode: wide output, use columns from terminal size as width
     elif _WITH_XXL and XXL_MODE:
         upload = download = info = ''
@@ -605,22 +655,19 @@ def showusers(user, *args, **kwargs) -> dict:
             p_bar = '-'
         filename = filename if filename else '---'
         if mb_xfered:
-            upload = string.Template(tmpl_str['upload']).substitute(tmpl_sub).format(
+            upload = string.Template(TMPL_STR['upload']).substitute(TMPL_SUB).format(
                 username=username, g_name=g_name, tagline=tagline, status=status, mb_xfered=mb_xfered
             )
             print(fmt_max_col(upload))
         else:
-            download = string.Template(tmpl_str['download']).substitute(tmpl_sub).format(
+            download = string.Template(TMPL_STR['download']).substitute(TMPL_SUB).format(
                 username=username, g_name=g_name, tagline=tagline, status=status.replace('  ', ' ').upper(), pct=pct, bar=p_bar
             )
             print(fmt_max_col(download))
-        info = string.Template(tmpl_str['info']).substitute(tmpl_sub).format(
+        info = string.Template(TMPL_STR['info']).substitute(TMPL_SUB).format(
                 userip=userip if userip != '0.0.0.0' else addr, online=online, filename=filename
         )
         print(fmt_max_col(info))
-        # separator:        fmt_max_col(layout['separator'])
-        # sep w/ calc len:  msg_len = max(len(upload), len(download), len(info))
-        #                   print("{_m:<{col}.{col}}".format(col = min((msg_len+1)*2, columns), _m=layout['separator'] * msg_len))
         print()
         onlineusers += 1
 
@@ -654,20 +701,20 @@ def showtotals(*args, **kwargs):
         speed_unit = 'KB/s'
     if not raw:
         if _WITH_XXL and XXL_MODE:
-            totals = string.Template(tmpl_str['totals']).substitute(tmpl_sub).format(
+            totals = string.Template(TMPL_STR['totals']).substitute(TMPL_SUB).format(
                 uploads=uploads, total_up_speed=total_up_speed, downloads=downloads, total_dn_speed=total_dn_speed,
                 total=uploads + downloads, total_speed=total_up_speed + total_dn_speed, unit=speed_unit
             )
-            users = string.Template(tmpl_str['users']).substitute(tmpl_sub).format(
+            users = string.Template(TMPL_STR['users']).substitute(TMPL_SUB).format(
                 onlineusers=onlineusers, maxusers=totalusers
             )
-            cprint(f'{totals} {users}')
+            fmt_max_col(f'{totals} {users}')
         else:
-            print(string.Template(tmpl_str['totals']).substitute(tmpl_sub).format(
+            print(string.Template(TMPL_STR['totals']).substitute(TMPL_SUB).format(
                 uploads=uploads, total_up_speed=total_up_speed, downloads=downloads, total_dn_speed=total_dn_speed,
                 total=uploads + downloads, total_speed=total_up_speed + total_dn_speed, unit=speed_unit
             ))
-            print(string.Template(tmpl_str['users']).substitute(tmpl_sub).format(
+            print(string.Template(TMPL_STR['users']).substitute(TMPL_SUB).format(
                 space=' ', onlineusers=onlineusers, maxusers=totalusers)
             )
     elif raw == 1:
@@ -693,7 +740,6 @@ def main():
         totalusers = glconf_users()
     else:
         totalusers = maxusers
-
     # get username from cli arg
     user_arg = None
     if USER_IDX >= 0:
@@ -701,10 +747,9 @@ def main():
             user_arg = sys.argv[USER_IDX]
         except (KeyError, IndexError):
             pass
-
     # show logo with header
     if (len(sys.argv) == 1 and not RAW_OUTPUT):
-        print(layout['header'])
+        print(LAYOUT['header'])
     elif _WITH_XXL and XXL_MODE:
         print('\n[ PY-WHO ]\n')
 
@@ -761,14 +806,14 @@ def main():
             u_idx += 1
 
     # make sure we do not show geoip2 error msgs more than once
-    if geoip2_enable:
+    if GEOIP2_ENABLE:
         geoip2_shown_err = kwargs['geoip2_shown_err']
 
     # show totals or single user stats
     if (len(sys.argv) == 1) or (RAW_OUTPUT == 3) or (_WITH_XXL and XXL_MODE):
         showtotals(RAW_OUTPUT, totalusers, **kwargs)
         if not RAW_OUTPUT and not XXL_MODE:
-            print(layout['footer'])
+            print(LAYOUT['footer'])
     elif user_arg and not XXL_MODE:
         u_found = False
         arg_idx = 0
@@ -783,14 +828,15 @@ def main():
             else:
                 print(f"\"ERROR\" \"User {user_arg} not online.\"\n")
             sys.exit(1)
+    elif HTML_MODE == 1:
+        write_html(userdata, totalusers, **kwargs)
     if (_WITH_ALTWHO and not RAW_OUTPUT) or (_WITH_XXL and XXL_MODE):
         print()
-
     try:
         memory.detach()
     except (UnboundLocalError, sysv_ipc.Error):
         pass
-    if _WITH_GEOIP and geoip2_enable:
+    if _WITH_GEOIP and GEOIP2_ENABLE:
         GEOIP2_CLIENT.close()
     sys.exit(0)
 

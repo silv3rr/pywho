@@ -57,7 +57,7 @@ HTML_MODE=0
 # handle args
 ##############
 if '-h' in sys.argv or '--help' in sys.argv:
-    print(f'./{SCRIPTNAME} [--raw|-ss5|--nbw] [username]')
+    print(f'./{SCRIPTNAME} [--raw|-ss5|--nbw|--htm] [username]')
     sys.exit(0)
 elif '-v' in sys.argv or '--version' in sys.argv:
     ver = f"pypwho-{VERSION}"

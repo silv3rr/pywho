@@ -40,6 +40,7 @@ Same args and options as pzs-ng sitewho:
 ./pywho --version
 ./pywho --spy              # spy mode (if enabled)
 ./pywho --xxl              # wide mode (if enabled)
+./pywho --htm              # output to pywho.html
 ```
 
 ## Installation

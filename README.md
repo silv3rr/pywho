@@ -1,3 +1,5 @@
+[![Build pywho](https://github.com/silv3rr/pywho/actions/workflows/build.yml/badge.svg)](https://github.com/silv3rr/pywho/actions/workflows/build.yml)
+
 # PY-WHO!?
 
 ## /pai-hu/
@@ -34,51 +36,43 @@ Same args and options as pzs-ng sitewho:
 
 # newly added in pywho:
 
-./phywho --help
-./phywho --version
-./phywho --spy              # spy mode (if enabled)
-./phywho --xxl              # wide mode (if enabled)
+./pywho --help
+./pywho --version
+./pywho --spy              # spy mode (if enabled)
+./pywho --xxl              # wide mode (if enabled)
+./pywho --htm              # output to pywho.html
 ```
 
 ## Installation
 
-Requirements:
+Only latest glftpd version 2.12+ is supported (other versions untested)
 
-- Python3 and 'sysv_ipc' module, all other modules used are from standard lib
-- only latest glftpd version 2.12 is supported (other versions untested)
+Pick one of these 3 methods
 
-__Choose 1 of the 3 installation methods below:__
-
-### 1) OS packages
-
-Seems CentOS does not have packages available, use venv or binaries instead (see below).
-
-On Debian just install these packages and run the script:
+## apt
 
 - `apt install python3-sysv-ipc`
 - `apt install python3-geoip2`  (optional)
 - `git clone` this repo and run script: `./pywho.py`
 
-### 2) Virtual Env
-
-Alternatively use venv and pip:
+## venv/pip
 
 ``` bash
+# Install py3/venv pkgs first, e.g. for debian/redhat:
 apt install python3-pip python3-venv
-# -or-
 yum install python3-pip python3-virtualenv
 
 python3 -m venv venv
 source venv/bin/activate
 pip3 install sysv-ipc
-pip3 install geoip2   # optional
+pip3 install geoip2  # optional
 ```
 
 Now 'git clone' this repo and run `./pywho.py`
 
-_If you want to build sysv_ip from src see [https://github.com/osvenskan/sysv_ip](https://github.com/osvenskan/sysv_ipc)_
+_If you want to build sysv_ip from src, see [https://github.com/osvenskan/sysv_ip](https://github.com/osvenskan/sysv_ipc)_
 
-### 3) Binaries
+## binaries
 
 [![Build pywho](https://github.com/silv3rr/pywho/actions/workflows/build.yml/badge.svg)](https://github.com/silv3rr/pywho/actions/workflows/build.yml)
 
@@ -86,7 +80,7 @@ If you do not want to install python modules, there's also a single executable f
 
 Supported: CentOS 7, Debian 10, Debian 11 and Ubuntu 20.04
 
-Get the files here: [Releases](../../releases)
+Goto [Releases](../../releases) tab for all files
 
 ## Configuration
 
@@ -122,9 +116,6 @@ The build script will check and warn about wrong python version and missing modu
 
 - No users are shown but they are actually logged in
     - Make sure users dont match 'hiddenusers' or 'hiddengroups' in pywho.conf
-
-- "Spy mode sucks! it doesnt work, updates slowly, ignores key presses, text gets fucked up"
-    - Well, yeah, it uses simple ansi escape sequences and select() stdin instead of curses and input events etc..
 
 ## Pywhy and how?
 

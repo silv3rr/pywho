@@ -59,7 +59,7 @@ command -V python3 || {
 }
 #command -V bc || { echo "ERROR: bc not found"; exit 1; }
 
-PYVER="$(python3 --version | sed 's/.* \([0-9]\.[0-9]\).*/\1/' | grep -E '^[0-9.]+$' || echo 0)"
+PYVER="$(python3 --version | sed 's/.* \([0-9]\.[0-9]\{1,2}\\).*/\1/' | grep -E '^[0-9.]+$' || echo 0)"
 PYVER_OK=0
 if command -V bc >/dev/null 2>&1; then
   if [ "$(echo "$PYVER >= $PYREQVER" | bc)" -eq 1 ]; then

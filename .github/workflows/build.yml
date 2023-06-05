@@ -14,7 +14,11 @@ env:
 jobs:
   ubuntu-vm-build-job:
     name: Build for Ubuntu
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu${{ matrix.ubuntu-release }}
+    strategy:
+      matrix:
+        ubuntu-release: [20.04, 22.04]
+      fail-fast: false
     steps:
       - uses: actions/checkout@v2
       - name: Run venv, pip, build and upload artifacts

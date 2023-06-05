@@ -14,7 +14,7 @@ env:
 jobs:
   ubuntu-vm-build-job:
     name: Build for Ubuntu
-    runs-on: ubuntu${{ matrix.ubuntu-release }}
+    runs-on: ubuntu-${{ matrix.ubuntu-release }}
     strategy:
       matrix:
         ubuntu-release: [20.04, 22.04]

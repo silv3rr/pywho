@@ -31,7 +31,7 @@ jobs:
           # git config --global user.name "${{ env.GIT_USER_NAME }}"
           # git config --global user.email "${{ env.GIT_USER_EMAIL }}"
           # git pull && git add bin && git commit -m "update ubuntu binary" && git push
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: build-ubuntu-artifacts
           path: ./build-ubuntu/*
@@ -63,7 +63,7 @@ jobs:
           # git config --global user.name "${{ env.GIT_USER_NAME }}"
           # git config --global user.email "${{ env.GIT_USER_EMAIL }}"
           # git pull && git add bin && git commit -m "update debian binaries" && git push
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: build-debian-artifacts
           path: ./build-debian/*
@@ -79,7 +79,7 @@ jobs:
         run: |
           yum install -y centos-release-scl && yum install -y rh-git218
           cp -v -rf /opt/rh/httpd24/root/* /opt/rh/rh-git218/root/* / || true
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Run yum, venv, pip, build and upload artifacts
         run: |
           yum install -y gcc python3-devel python3-pip python3-virtualenv

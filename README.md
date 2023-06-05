@@ -17,7 +17,6 @@ See [Screenshots.md](docs/Screenshots.md) for more examples
 - fully themeable output including ..colors! and.. emoji💾😆
 - set maxusers=-1 to auto get value from glftpd.conf
 - adds same features as sitewho+2: userip/geoip fields
-- adds spy mode, like gl_spy (test)
 - only 1 py module dependency: sysv_ipc
 - can also be build as single binary (using pyinstaller)
 
@@ -37,8 +36,6 @@ Same args and options as pzs-ng sitewho:
 # newly added in pywho:
 
 ./pywho --help
-./pywho --version
-./pywho --spy              # spy mode (if enabled)
 ./pywho --xxl              # wide mode (if enabled)
 ./pywho --htm              # output to pywho.html
 ```
@@ -84,9 +81,9 @@ Goto [Releases](../../releases) tab for all files
 
 ## Configuration
 
-Configure options in 'pywho.conf'. The ones on top are standard options, same as sitewho.conf. There are options added in new sections GEOIP, THEME, SPYMODE and XXLMODE. All options are explained at the bottom of conf. Make sure 'ipc_key' matches glftpd.
+Configure options in 'pywho.conf'. The ones on top are standard options, same as sitewho.conf. There are options added in new sections GEOIP, THEME and XXLMODE. All options are explained at the bottom of conf. Make sure 'ipc_key' matches glftpd.
 
-_Note that ss5, geoip, spy and xxl mode are disabled by default. To enable, edit pywho.py: `_WITH_GEOIP =  True` etc_
+_Note that ss5, geoip and xxl mode are disabled by default. To enable, edit pywho.py: `_WITH_GEOIP =  True` etc_
 
 ### Glftpd
 
@@ -98,7 +95,7 @@ To build the pywho binary yourself you need PyInstaller. You probably want to se
 
 Now clone this repo and run build.sh, optionally add one or more of these args:
 
-`build.sh _WITH_ALTWHO _WITH_SS5 _WITH_SPY _WITH_GEOIP _WITH_XXL`
+`build.sh _WITH_ALTWHO _WITH_SS5  _WITH_GEOIP _WITH_XXL`
 
 The build script will check and warn about wrong python version and missing modules.
 
@@ -111,8 +108,8 @@ The build script will check and warn about wrong python version and missing modu
 - Enabling geoip2 is slow!
     - Yes.
 
-- If geoip2 and spy mode are enabled you can run out of your free geoip queries
-    - Max is 1000/day, ip lookups are cached in mem only and reset on restart of pywho
+- If geoip2 is enabled you can run out of your free geoip queries
+    - Max is 1000/day, ip lookups are cached in mem only and reset on every runp of pywho
 
 - No users are shown but they are actually logged in
     - Make sure users dont match 'hiddenusers' or 'hiddengroups' in pywho.conf

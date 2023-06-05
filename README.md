@@ -75,7 +75,7 @@ _If you want to build sysv_ip from src, see [https://github.com/osvenskan/sysv_i
 
 If you do not want to install python modules, there's also a single executable file available for [download](../../releases).
 
-Supported: CentOS 7, Debian 10, Debian 11 and Ubuntu 20.04
+Supported: CentOS 7, Debian 10, Debian 11, Ubuntu 20.04 and Ubuntu 22.04
 
 Goto [Releases](../../releases) tab for all files
 
@@ -83,7 +83,7 @@ Goto [Releases](../../releases) tab for all files
 
 Configure options in 'pywho.conf'. The ones on top are standard options, same as sitewho.conf. There are options added in new sections GEOIP, THEME and XXLMODE. All options are explained at the bottom of conf. Make sure 'ipc_key' matches glftpd.
 
-_Note that ss5, geoip and xxl mode are disabled by default. To enable, edit pywho.py: `_WITH_GEOIP =  True` etc_
+_Note that ss5, geoip and xxl mode are disabled by default. To enable, edit pywho.py: `_WITH_GEOIP = True` etc_
 
 ### Glftpd
 
@@ -109,7 +109,7 @@ The build script will check and warn about wrong python version and missing modu
     - Yes.
 
 - If geoip2 is enabled you can run out of your free geoip queries
-    - Max is 1000/day, ip lookups are cached in mem only and reset on every runp of pywho
+    - Max is 1000/day, ip lookups are cached in mem only and reset on every run of pywho
 
 - No users are shown but they are actually logged in
     - Make sure users dont match 'hiddenusers' or 'hiddengroups' in pywho.conf

@@ -44,13 +44,13 @@ Same args and options as pzs-ng sitewho:
 
 Only latest glftpd version 2.12+ is supported (other versions untested)
 
-Pick one of these 3 methods
+Pick one of these 3 setup methods
 
 ## apt
 
 - `apt install python3-sysv-ipc`
 - `apt install python3-geoip2`  (optional)
-- `git clone` this repo and run script: `./pywho.py`
+- `git clone` this repo and run `./pywho.py`
 
 ## venv/pip
 
@@ -65,7 +65,7 @@ pip3 install sysv-ipc
 pip3 install geoip2  # optional
 ```
 
-Now 'git clone' this repo and run `./pywho.py`
+Now `git clone` this repo and run `./pywho.py`
 
 _If you want to build sysv_ip from src, see [https://github.com/osvenskan/sysv_ip](https://github.com/osvenskan/sysv_ipc)_
 

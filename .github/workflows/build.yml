@@ -56,7 +56,10 @@ jobs:
       - name: Run apt, venv, pip, build and upload artifacts
         run: |
           DEBIAN_FRONTEND=noninteractive apt-get update -y
-          apt-get install -y upx-ucl
+          apt-get install -y upx-ucl || { \
+            wget -q http://ftp.us.debian.org/debian/pool/main/u/upx-ucl/upx-ucl_3.96-3+b1_amd64.deb && \
+            dpkg -i upx-ucl_3.96-3+b1_amd64.deb; \
+          }
           python3 -m venv venv && . venv/bin/activate
           pip3 install --upgrade pip wheel setuptools
           pip3 install -r requirements.txt
@@ -85,8 +88,8 @@ jobs:
       - name: Run yum, venv, pip, build and upload artifacts
         run: |
           yum install -y gcc python3-devel python3-pip python3-virtualenv
-          yum install -y https://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/u/ucl-1.03-24.el7.x86_64.rpm
-          yum install -y https://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/u/upx-3.96-9.el7.x86_64.rpm
+          yum install -y https://dl.fedoraproject.org/pub/epel/7/x86_64/Packages/u/ucl-1.03-24.el7.x86_64.rpm
+          yum install -y https://dl.fedoraproject.org/pub/epel/7/x86_64/Packages/u/upx-3.96-9.el7.x86_64.rpm
           python3 -m venv venv && . venv/bin/activate
           pip3 install --upgrade pip wheel setuptools
           pip3 install -r requirements.txt

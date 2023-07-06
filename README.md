@@ -71,13 +71,15 @@ _If you want to build sysv_ip from src, see [https://github.com/osvenskan/sysv_i
 
 ## binaries
 
-[![Build pywho](https://github.com/silv3rr/pywho/actions/workflows/build.yml/badge.svg)](https://github.com/silv3rr/pywho/actions/workflows/build.yml)
-
 If you do not want to install python modules, there's also a single executable file available for [download](../../releases).
 
 Supported: CentOS 7, Debian 10, Debian 11, Ubuntu 20.04 and Ubuntu 22.04
 
-Goto [Releases](../../releases) tab for all files
+Goto [Releases](../../releases) tab for all files. Click **Show all .. assets** link at the bottom.
+
+## docker
+
+It's also included in [docker-glftpd](https://github.com/silv3rr/docker-glftpd)
 
 ## Configuration
 

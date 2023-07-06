@@ -223,7 +223,8 @@ if _WITH_GEOIP and GEOIP2_ENABLE:
     import geoip2.webservice
     GEOIP2_CLIENT = geoip2.webservice.Client(
         geoip2_accountid,
-        geoip2_licensekey, host='geolite.info',
+        geoip2_licensekey,
+        host='geolite.info',
         proxy=None if not geoip2_proxy or geoip2_proxy == 'None' else geoip2_proxy
     )
 
@@ -274,32 +275,32 @@ if color == 0 or GL_NOCOLOR or XXL_MODE:
 
 def glconf_users():
     """ sum max_users from glftpd.conf """
-    glconf_max = 0
-    for glconf_fname in [f'{glrootpath}/../glftpd.conf', f'{glrootpath}/glftpd.conf', '/etc/glftpd.conf']:
+    gl_max = 0
+    for fn in [f'{glrootpath}/../glftpd.conf', f'{glrootpath}/glftpd.conf', '/etc/glftpd.conf']:
         try:
-            with open(glconf_fname, 'r', encoding='utf-8', errors='ignore') as glconf:
-                for glconf_line in glconf.readlines():
-                    if re.search(r'^max_users \d', glconf_line):
-                        for mu_cnt in glconf_line.split()[1:]:
-                            glconf_max += int(mu_cnt)
+            with open(fn, 'r', encoding='utf-8', errors='ignore') as f_obj:
+                for line in f_obj.readlines():
+                    if re.search(r'^max_users \d', line):
+                        for i in line.split()[1:]:
+                            gl_max += int(i)
                         break
         except IOError:
             pass
-    return glconf_max
+    return gl_max
 
 
-def get_group(gid):
+def get_group(gid) -> str:
     """ get group name using gid """
     line = None
     for line in groupfile:
         if line.split(':')[2] == str(gid):
             g_name = line.split(':')[0]
             return g_name
-    return None
+    return ""
 
 
 def get_gid(g_name):
-    """ get gid using group name """
+    """ get group id using name """
     line = None
     gid = 0
     for line in groupfile:

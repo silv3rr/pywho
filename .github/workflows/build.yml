@@ -14,10 +14,14 @@ env:
 jobs:
   ubuntu-vm-build-job:
     name: Build for Ubuntu
-    runs-on: ubuntu-${{ matrix.ubuntu-release }}
+    runs-on: ubuntu-${{ matrix.ubuntu-version }}
     strategy:
       matrix:
-        ubuntu-release: [20.04, 22.04]  # focal fossa, jammy jellyfish
+        include:
+          - ubuntu-release: focal_fossa
+            ubuntu-version: 20.04
+          - ubuntu-release: jammy_jellyfish
+            ubuntu-version: 22.04
       fail-fast: false
     steps:
       - uses: actions/checkout@v2
@@ -43,11 +47,14 @@ jobs:
     strategy:
       matrix:
         include:
-          - debian-release: buster    # 10
+          - debian-release: buster
+            debian-version: 10
             python-version: 3.7
-          - debian-release: bullseye  # 11
+          - debian-release: bullseye
+            debian-version: 11
             python-version: 3.9
-          - debian-release: bookworm  # 12
+          - debian-release: bookworm
+            debian-version: 12
             python-version: 3.11
       fail-fast: false
     container: python:${{ matrix.python-version }}-${{ matrix.debian-release }}
@@ -56,9 +63,10 @@ jobs:
       - name: Run apt, venv, pip, build and upload artifacts
         run: |
           DEBIAN_FRONTEND=noninteractive apt-get update -y
-          apt-get install -y upx-ucl || { \
-            wget -q http://ftp.us.debian.org/debian/pool/main/u/upx-ucl/upx-ucl_3.96-3+b1_amd64.deb && \
-            dpkg -i upx-ucl_3.96-3+b1_amd64.deb; \
+          apt-get install -y upx-ucl || {
+            apt-get install -y libucl1 &&
+            wget -q http://ftp.us.debian.org/debian/pool/main/u/upx-ucl/upx-ucl_3.96-3+b1_amd64.deb && 
+            dpkg -i upx-ucl_3.96-3+b1_amd64.deb;
           }
           python3 -m venv venv && . venv/bin/activate
           pip3 install --upgrade pip wheel setuptools

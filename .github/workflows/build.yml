@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-${{ matrix.ubuntu-release }}
     strategy:
       matrix:
-        ubuntu-release: [20.04, 22.04]
+        ubuntu-release: [20.04, 22.04]  # focal fossa, jammy jellyfish
       fail-fast: false
     steps:
       - uses: actions/checkout@v2
@@ -43,10 +43,12 @@ jobs:
     strategy:
       matrix:
         include:
-          - debian-release: buster
+          - debian-release: buster    # 10
             python-version: 3.7
-          - debian-release: bullseye
+          - debian-release: bullseye  # 11
             python-version: 3.9
+          - debian-release: bookworm  # 12
+            python-version: 3.11
       fail-fast: false
     container: python:${{ matrix.python-version }}-${{ matrix.debian-release }}
     steps:
@@ -74,7 +76,7 @@ jobs:
     runs-on: ubuntu-latest
     container: centos:7
     steps:
-      # get git-2.18 from softwarecollections since git-1.8 from base repo is too old for gh-actions
+      # get git-2.18 from softwarecollections, git-1.8 from base repo is too old for gh-actions
       - name: Install git-2.18
         run: |
           yum install -y centos-release-scl && yum install -y rh-git218

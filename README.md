@@ -12,15 +12,17 @@ Can be used as drop-in replacement.
 
 See [Screenshots.md](docs/Screenshots.md) for more examples
 
+The 'spy' option was moved to [pyspy](https://github.com/silv3rr/pyspy).
+
 ## New features
 
 - fully themeable output including ..colors! and.. emoji💾😆
-- set maxusers=-1 to auto get value from glftpd.conf
-- adds same features as sitewho+2: userip/geoip fields
+- set `maxusers = -1` to auto get value from glftpd.conf
+- adds same features as [sitewho+2](https://github.com/silv3rr/sitewho-plus2): userip/geoip fields
 - only 1 py module dependency: sysv_ipc
 - can also be build as single binary (using pyinstaller)
 
-..also, now 200% slower!
+..also, now 200% slower! tnx python. Nothing you'll notice though.
 
 ## Usage
 

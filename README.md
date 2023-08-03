@@ -22,7 +22,7 @@ The 'spy' option was moved to [pyspy](https://github.com/silv3rr/pyspy).
 - only 1 py module dependency: sysv_ipc
 - can also be build as single binary (using pyinstaller)
 
-..also, now 200% slower! tnx python. Nothing you'll notice though.
+..also, now 200% slower! tnx python. With geoip off you wont notice though.
 
 ## Usage
 

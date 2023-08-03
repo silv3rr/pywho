@@ -75,7 +75,7 @@ _If you want to build sysv_ip from src, see [https://github.com/osvenskan/sysv_i
 
 If you do not want to install python modules, there's also a single executable file available for [download](../../releases).
 
-Supported: CentOS 7, Debian 10, Debian 11, Ubuntu 20.04 and Ubuntu 22.04
+Supported: CentOS 7, Debian 10, 11, 12 and Ubuntu 20.04, 22.04
 
 Goto [Releases](../../releases) tab for all files. Click **Show all .. assets** link at the bottom.
 

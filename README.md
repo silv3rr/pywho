@@ -46,7 +46,7 @@ Same args and options as pzs-ng sitewho:
 
 Only latest glftpd version 2.12+ is supported (other versions untested)
 
-Pick one of these 3 setup methods
+Pick one of these 3 setup methods: binaries, apt or venv.
 
 ## apt
 
@@ -54,7 +54,7 @@ Pick one of these 3 setup methods
 - `apt install python3-geoip2`  (optional)
 - `git clone` this repo and run `./pywho.py`
 
-## venv/pip
+## venv
 
 ``` bash
 # Install py3/venv pkgs first, e.g. for debian/redhat:

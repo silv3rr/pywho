@@ -75,9 +75,16 @@ _If you want to build sysv_ip from src, see [https://github.com/osvenskan/sysv_i
 
 If you do not want to install python modules, there's also a single executable file available for [download](../../releases).
 
-Supported: [CentOS 7 (EOL)](../../releases/download/slv-pywho-v20230706/pywho-centos7-python3.6-x86_x64.tar.gz), Debian 10, 11, 12 and Ubuntu 20.04, 22.04, 24.04
+Supported:
 
-Goto [Releases](../../releases) tab for all files. Click **Show all .. assets** link at the bottom.
+- Debian 10, 11, 12
+- Ubuntu 20.04, 22.04, 24.04
+- CentOS Stream, Almalinux 9.3, Rockylinux 9.3
+- Alpine 3.20
+
+EOL: [CentOS 7](../../releases/download/slv-pywho-v20230706/pywho-centos7-python3.6-x86_x64.tar.gz)
+ 
+Goto [Releases](../../releases) tab for all files. Click "Show all assets" link at the bottom to expand file list.
 
 ## docker
 

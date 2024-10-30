@@ -34,12 +34,9 @@ jobs:
           pip3 install -r requirements.txt
           pip3 install pyinstaller sysv-ipc geoip2
           ./build.sh && mkdir ./build-ubuntu && mv -f *.tar.gz *.sha512sum ./build-ubuntu
-          # git config --global user.name "${{ env.GIT_USER_NAME }}"
-          # git config --global user.email "${{ env.GIT_USER_EMAIL }}"
-          # git pull && git add bin && git commit -m "update ubuntu binary" && git push
       - uses: actions/upload-artifact@v4
         with:
-          name: build-ubuntu-artifacts
+          name: build-ubuntu-${{ matrix.ubuntu-version }}-artifacts
           path: ./build-ubuntu/*
           if-no-files-found: error
  
@@ -80,39 +77,40 @@ jobs:
           # git pull && git add bin && git commit -m "update debian binaries" && git push
       - uses: actions/upload-artifact@v4
         with:
-          name: build-debian-artifacts
+          name: build-debian-${{ matrix.debian-version }}-artifacts
           path: ./build-debian/*
           if-no-files-found: error
   
-#  centos7-container-build-job:
-#    name: Build for CentOS 7
-#    runs-on: ubuntu-latest
-#    container: centos:7
-#    steps:
-#      # get git-2.18 from softwarecollections, git-1.8 from base repo is too old for gh-actions
-#      - name: Install git-2.18
-#        run: |
-#          yum install -y centos-release-scl && yum install -y rh-git218
-#          cp -v -rf /opt/rh/httpd24/root/* /opt/rh/rh-git218/root/* / || true
-#      - uses: actions/checkout@v4
-#      - name: Run yum, venv, pip, build and upload artifacts
-#        run: |
-#          yum install -y gcc python3-devel python3-pip python3-virtualenv
-#          yum install -y https://dl.fedoraproject.org/pub/epel/7/x86_64/Packages/u/ucl-1.03-24.el7.x86_64.rpm
-#          yum install -y https://dl.fedoraproject.org/pub/epel/7/x86_64/Packages/u/upx-3.96-9.el7.x86_64.rpm
-#          python3 -m venv venv && . venv/bin/activate
-#          pip3 install --upgrade pip wheel setuptools
-#          pip3 install -r requirements.txt
-#          pip3 install pyinstaller sysv-ipc geoip2
-#          ./build.sh  && mkdir ./build-centos && mv -f *.tar.gz *.sha512sum ./build-centos
-#          # git config --global user.name "${{ env.GIT_USER_NAME }}"
-#          # git config --global user.email "${{ env.GIT_USER_EMAIL }}"
-#          # git pull && git add bin && git commit -m "update centos binary" && git push
-#      - uses: actions/upload-artifact@v4
-#        with:
-#          name: build-centos-artifacts
-#          path: ./build-centos/*
-#          if-no-files-found: error
+  centos7-container-build-job:
+    if: ${{ vars.BUILD_CENTOS7 == 'true' }}
+    name: Build for CentOS 7
+    runs-on: ubuntu-latest
+    container: centos:7
+    steps:
+      # get git-2.18 from softwarecollections, git-1.8 from base repo is too old for gh-actions
+      - name: Install git-2.18
+        run: |
+          yum install -y centos-release-scl && yum install -y rh-git218
+          cp -v -rf /opt/rh/httpd24/root/* /opt/rh/rh-git218/root/* / || true
+      - uses: actions/checkout@v4
+      - name: Run yum, venv, pip, build and upload artifacts
+        run: |
+          yum install -y gcc python3-devel python3-pip python3-virtualenv
+          yum install -y https://dl.fedoraproject.org/pub/epel/7/x86_64/Packages/u/ucl-1.03-24.el7.x86_64.rpm
+          yum install -y https://dl.fedoraproject.org/pub/epel/7/x86_64/Packages/u/upx-3.96-9.el7.x86_64.rpm
+          python3 -m venv venv && . venv/bin/activate
+          pip3 install --upgrade pip wheel setuptools
+          pip3 install -r requirements.txt
+          pip3 install pyinstaller sysv-ipc geoip2
+          ./build.sh  && mkdir ./build-centos && mv -f *.tar.gz *.sha512sum ./build-centos
+          # git config --global user.name "${{ env.GIT_USER_NAME }}"
+          # git config --global user.email "${{ env.GIT_USER_EMAIL }}"
+          # git pull && git add bin && git commit -m "update centos binary" && git push
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-centos-artifacts
+          path: ./build-centos/*
+          if-no-files-found: error
 
   rhel-container-build-job:
     name: Build for RHEL

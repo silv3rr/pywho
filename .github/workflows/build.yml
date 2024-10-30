@@ -22,9 +22,11 @@ jobs:
             ubuntu-version: 20.04
           - ubuntu-release: jammy_jellyfish
             ubuntu-version: 22.04
+          - ubuntu-release: nobla_numbat
+            ubuntu-version: 24.04
       fail-fast: false
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Run venv, pip, build and upload artifacts
         run: |
           python3 -m venv venv && . venv/bin/activate
@@ -59,7 +61,7 @@ jobs:
       fail-fast: false
     container: python:${{ matrix.python-version }}-${{ matrix.debian-release }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Run apt, venv, pip, build and upload artifacts
         run: |
           DEBIAN_FRONTEND=noninteractive apt-get update -y
@@ -106,7 +108,7 @@ jobs:
 #          # git config --global user.name "${{ env.GIT_USER_NAME }}"
 #          # git config --global user.email "${{ env.GIT_USER_EMAIL }}"
 #          # git pull && git add bin && git commit -m "update centos binary" && git push
-#      - uses: actions/upload-artifact@v2
+#      - uses: actions/upload-artifact@v3
 #        with:
 #          name: build-centos-artifacts
 #          path: ./build-centos/*
@@ -118,9 +120,9 @@ jobs:
     #needs: [ubuntu-vm-build-job, debian-container-build-job, centos7-container-build-job]
     needs: [ubuntu-vm-build-job, debian-container-build-job]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Download artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           path: build-artifacts
       - name: Create gh release using 'hub'

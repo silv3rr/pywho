@@ -61,21 +61,21 @@ command -V python3 || {
 
 PYVER="$(python3 --version | sed 's/.* \([0-9]\.[0-9]\{1,2\}\).*/\1/' | grep -E '^[0-9.]+$' || echo 0)"
 PYVER_OK=0
-if command -V bc >/dev/null 2>&1; then
-  if [ "$(echo "$PYVER >= $PYREQVER" | bc)" -eq 1 ]; then
-    PYVER_OK=1
-  fi
-else
+#if command -V bc >/dev/null 2>&1; then
+#  if [ "$(echo "$PYVER >= $PYREQVER" | bc)" -eq 1 ]; then
+#    PYVER_OK=1
+#  fi
+#else
   PYVER_MAY="$(echo "$PYVER" | sed 's/\([0-9]\)\.[0-9]/\1/')"
-  PYVER_MIN="$(echo "$PYVER" | sed 's/[0-9]\.\([0-9]\)/\1/')"
+  PYVER_MIN="$(echo "$PYVER" | sed 's/[0-9]\.\([0-9]\+\)/\1/')"
   PYREQVER_MAY="$(echo $PYREQVER | sed 's/\([0-9]\)\.[0-9]/\1/')"
-  PYREQVER_MIN="$(echo $PYREQVER | sed 's/[0-9]\.\([0-9]\)/\1/')"
+  PYREQVER_MIN="$(echo $PYREQVER | sed 's/[0-9]\.\([0-9]\+\)/\1/')"
   if [ "$PYVER_MAY" -gt "$PYREQVER_MAY" ]; then
     PYVER_OK=1
   elif [ "$PYVER_MAY" -eq "$PYREQVER_MAY" ] && [ "$PYVER_MIN" -ge "$PYREQVER_MIN" ]; then
     PYVER_OK=1
   fi
-fi
+#fi
 if [ "$PYVER_OK" -eq 1 ]; then
   echo "python version is OK (need Python ${PYREQVER}+ got v${PYVER})"
 else
@@ -84,8 +84,9 @@ fi
 
 ECNT=0
 for i in $REQS; do
+  PKG="$( echo "$i" | tr '_' '-' )"
   printf "%b\n" 'try:\n  import '"${i}"'\nexcept:\n  exit(1)' | python3 || {
-    echo "Module '${i}' not found, try 'apt install python3-${i}' or 'pip install ${i}'"
+    echo "Module '${i}' not found, try 'apt install python3-${PKG}' or 'pip install ${PKG}'"
     ECNT=$((ECNT + 1))
   }
 done
@@ -96,7 +97,7 @@ fi
 
 if [ "$PYINSTALLER" -eq 1 ]; then
   command -v pyinstaller >/dev/null 2>&1 || {
-    echo "ERROR: pyinstaller not found, try 'pip install pyinstaller'"
+    echo "ERROR: pyinstaller not found, try 'apt install python3-pyinstaller' or 'pip install pyinstaller'"
     exit 1
   }
   pyinstaller pywho.py $ARGS --clean --noconfirm --onefile &&

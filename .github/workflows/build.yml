@@ -39,7 +39,7 @@ jobs:
           name: build-ubuntu-${{ matrix.ubuntu-version }}-artifacts
           path: ./build-ubuntu/*
           if-no-files-found: error
-
+f
   debian-container-build-job:
     name: Build for Debian
     runs-on: ubuntu-latest
@@ -111,6 +111,41 @@ jobs:
           name: build-centos-artifacts
           path: ./build-centos/*
           if-no-files-found: error
+
+  rhel-container-build-job:
+      name: Build for RHEL
+      runs-on: ubuntu-latest
+      strategy:
+        matrix:
+          include:
+            - rhel-distro: centos-stream
+              rhel-image: quay.io/centos/centos
+              rhel-version: stream9
+            - rhel-distro: alma-linux
+              rhel-image: almalinux
+              rhel-version: 9.4
+            - rhel-distro: rocky-linux
+              rhel-image: rockylinux
+              rhel-version: 9.3
+      fail-fast: false
+      container: ${{ matrix.rhel-image }}:${{ matrix.rhel-version }}
+      steps:
+        - uses: actions/checkout@v4
+        - name: Run yum, venv, pip, build and upload artifacts
+          run: |
+            dnf install -y gcc python3-devel python3-pip
+            dnf install -y epel-release
+            python3 -m venv venv && . venv/bin/activate
+            pip3 install --upgrade pip wheel setuptools
+            pip3 install -r requirements.txt
+            pip3 install pyinstaller sysv-ipc geoip2
+            ./build.sh && mkdir ./build-${{ matrix.rhel-distro }} && mv -f *.tar.gz *.sha512sum ./build-${{ matrix.rhel-distro }}
+        - uses: actions/upload-artifact@v4
+          with:
+            name: build-${{ matrix.rhel-distro }}-artifacts
+            path: ./build-${{ matrix.rhel-distro }}/*
+            if-no-files-found: error
+
 
   alpine-container-build-job:
     name: Build for Alpine Linux

@@ -127,7 +127,7 @@ jobs:
             - rhel-distro: rocky-linux
               rhel-image: rockylinux
               rhel-version: 9.3
-      fail-fast: false
+        fail-fast: false
       container: ${{ matrix.rhel-image }}:${{ matrix.rhel-version }}
       steps:
         - uses: actions/checkout@v4

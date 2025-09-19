@@ -39,7 +39,7 @@ jobs:
           name: build-ubuntu-${{ matrix.ubuntu-version }}-artifacts
           path: ./build-ubuntu/*
           if-no-files-found: error
-f
+
   debian-container-build-job:
     name: Build for Debian
     runs-on: ubuntu-latest

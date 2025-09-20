@@ -58,7 +58,7 @@ jobs:
       - name: Run venv, pip, build and upload artifacts
         run: |
           DEBIAN_FRONTEND=noninteractive apt-get update -y
-          DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y python3 python3-venv python3-pip upx-ucl
+          DEBIAN_FRONTEND=noninteractive apt-get install -y python3 python3-pip upx-ucl
           python3 -m venv venv && . venv/bin/activate
           pip3 install --upgrade pip wheel setuptools
           pip3 install -r requirements.txt

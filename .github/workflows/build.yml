@@ -197,7 +197,7 @@ jobs:
   create-release:
     name: Get artifacts, create release
     runs-on: ubuntu-latest
-    needs: [ubuntu-vm-build-job, debian-container-build-job, rhel-container-build-job, alpine-container-build-job]
+    needs: [ubuntu-container-build-job, debian-container-build-job, rhel-container-build-job, alpine-container-build-job]
     steps:
       - uses: actions/checkout@v4
       - name: Download artifacts

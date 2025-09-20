@@ -12,7 +12,6 @@ env:
   GIT_USER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
 
 jobs:
-  # moved ubuntu jobs to containers
   ubuntu-vm-build-job:
     if: ${{ vars.BUILD_UBUNTU_VM == 'true' }} 
     name: Build for Ubuntu in vm
@@ -53,7 +52,7 @@ jobs:
           - ubuntu-release: noble_numbat
             ubuntu-version: 24.04
       fail-fast: false
-    container: ubuntu:${{ matrix.ubuntu-release }}     
+    container: ubuntu:${{ matrix.ubuntu-version }}     
     steps:
       - uses: actions/checkout@v4
       - name: Run venv, pip, build and upload artifacts

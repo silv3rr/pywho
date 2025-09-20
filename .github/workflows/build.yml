@@ -12,9 +12,37 @@ env:
   GIT_USER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
 
 jobs:
+  # moved ubuntu jobs to containers
   ubuntu-vm-build-job:
-    name: Build for Ubuntu
+    if: ${{ vars.BUILD_UBUNTU_VM == 'true' }} 
+    name: Build for Ubuntu in vm
     runs-on: ubuntu-${{ matrix.ubuntu-version }}
+    strategy:
+      matrix:
+        include:
+          - ubuntu-release: jammy_jellyfish
+            ubuntu-version: 22.04
+          - ubuntu-release: noble_numbat
+            ubuntu-version: 24.04
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run venv, pip, build and upload artifacts
+        run: |
+          python3 -m venv venv && . venv/bin/activate
+          pip3 install --upgrade pip wheel setuptools
+          pip3 install -r requirements.txt
+          pip3 install pyinstaller sysv-ipc geoip2
+          ./build.sh && mkdir ./build-ubuntu && mv -f *.tar.gz *.sha512sum ./build-ubuntu
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-ubuntu-${{ matrix.ubuntu-version }}-artifacts
+          path: ./build-ubuntu/*
+          if-no-files-found: error
+
+  ubuntu-container-build-job:
+    name: Build for Ubuntu in container
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         include:
@@ -25,6 +53,7 @@ jobs:
           - ubuntu-release: noble_numbat
             ubuntu-version: 24.04
       fail-fast: false
+    container: ubuntu:${{ matrix.ubuntu-release }}     
     steps:
       - uses: actions/checkout@v4
       - name: Run venv, pip, build and upload artifacts

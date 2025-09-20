@@ -57,6 +57,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run venv, pip, build and upload artifacts
         run: |
+          DEBIAN_FRONTEND=noninteractive apt-get update -y
+          DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y python3 python3-venv python3-pip upx-ucl
           python3 -m venv venv && . venv/bin/activate
           pip3 install --upgrade pip wheel setuptools
           pip3 install -r requirements.txt
@@ -100,9 +102,6 @@ jobs:
           pip3 install -r requirements.txt
           pip3 install pyinstaller sysv-ipc geoip2
           ./build.sh && mkdir ./build-debian && mv -f *.tar.gz *.sha512sum ./build-debian
-          # git config --global user.name "${{ env.GIT_USER_NAME }}"
-          # git config --global user.email "${{ env.GIT_USER_EMAIL }}"
-          # git pull && git add bin && git commit -m "update debian binaries" && git push
       - uses: actions/upload-artifact@v4
         with:
           name: build-debian-${{ matrix.debian-version }}-artifacts
@@ -131,9 +130,6 @@ jobs:
           pip3 install -r requirements.txt
           pip3 install pyinstaller sysv-ipc geoip2
           ./build.sh  && mkdir ./build-centos && mv -f *.tar.gz *.sha512sum ./build-centos
-          # git config --global user.name "${{ env.GIT_USER_NAME }}"
-          # git config --global user.email "${{ env.GIT_USER_EMAIL }}"
-          # git pull && git add bin && git commit -m "update centos binary" && git push
       - uses: actions/upload-artifact@v4
         with:
           name: build-centos-artifacts
